@@ -1,0 +1,2996 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wegpunkt-Optimierer</title>
+<style>
+  :root{
+    --ink:#1f2b23;
+    --paper:#f1efe6;
+    --paper-2:#e6e2d3;
+    --moss:#3c5a45;
+    --moss-dark:#26392c;
+    --line:#c9c2ab;
+    --amber:#b5842a;
+    --red:#8a3b32;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family: ui-sans-serif, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height:1.5;
+  }
+  .wrap{
+    max-width:980px;
+    margin:0 auto;
+    padding:1rem 1.5rem 1.5rem;
+  }
+  header{
+    padding-bottom:0.4rem;
+    margin-bottom:0.8rem;
+  }
+  h1{
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    font-weight:600;
+    font-size:2rem;
+    letter-spacing:-0.01em;
+    margin:0 0 0.35rem;
+    color:var(--moss-dark);
+  }
+  .sub{
+    color:#5a5748;
+    font-size:0.95rem;
+  }
+  .contour{
+    position:relative;
+    height:10px;
+    margin:0 0 1.6rem;
+    opacity:0.55;
+  }
+  .contour svg{width:100%;height:100%;display:block;}
+  section{margin-bottom:2rem;}
+  .card{
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:1.25rem 1.4rem;
+  }
+  label{
+    display:block;
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:#5a5748;
+    margin-bottom:0.35rem;
+  }
+  .row{
+    display:flex;
+    gap:1.5rem;
+    flex-wrap:wrap;
+    align-items:flex-end;
+  }
+  .field{margin-bottom:1.1rem;}
+  input[type="file"]{
+    font-size:0.9rem;
+  }
+  input[type="number"]{
+    width:6rem;
+    padding:0.4rem 0.55rem;
+    border:1px solid var(--line);
+    border-radius:3px;
+    background:var(--paper);
+    font-variant-numeric: tabular-nums;
+    font-size:0.95rem;
+  }
+  .choice{
+    display:flex;
+    gap:0.6rem;
+  }
+  .choice button{
+    padding:0.5rem 0.9rem;
+    border:1px solid var(--line);
+    background:var(--paper);
+    border-radius:3px;
+    cursor:pointer;
+    font-size:0.88rem;
+    color:var(--ink);
+  }
+  .choice button.active{
+    background:var(--moss);
+    color:var(--paper);
+    border-color:var(--moss);
+  }
+  button.primary{
+    background:var(--moss);
+    color:var(--paper);
+    border:none;
+    padding:0.7rem 1.3rem;
+    border-radius:3px;
+    font-size:0.95rem;
+    cursor:pointer;
+    font-weight:600;
+  }
+  button.primary:disabled{
+    background:#9aa79c;
+    cursor:not-allowed;
+  }
+  button.ghost{
+    background:none;
+    border:1px solid var(--moss);
+    color:var(--moss-dark);
+    padding:0.65rem 1.2rem;
+    border-radius:3px;
+    cursor:pointer;
+    font-size:0.9rem;
+  }
+  button.ghost:disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+  }
+  #status{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:0.85rem;
+    color:var(--moss-dark);
+    white-space:pre-wrap;
+    min-height:1.4em;
+    margin-top:1rem;
+  }
+  .stats{
+    display:flex;
+    gap:2.2rem;
+    flex-wrap:wrap;
+    margin-top:1.1rem;
+  }
+  .stat .n{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:1.5rem;
+    color:var(--moss-dark);
+    font-weight:600;
+  }
+  .stat .l{
+    font-size:0.75rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:#5a5748;
+  }
+  canvas{
+    width:100%;
+    max-width:100%;
+    height:auto;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--paper);
+    margin-top:1rem;
+  }
+  #log{
+    font-size:0.8rem;
+    color:#6b6858;
+    margin-top:0.4rem;
+  }
+  .hint{
+    font-size:0.82rem;
+    color:#6b6858;
+    margin-top:0.6rem;
+  }
+  .foot{
+    margin-top:1rem;
+    font-size:0.8rem;
+    color:#8a8672;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Wegpunkt-Optimierer</h1>
+    <div class="sub">TSP-Näherung (Nearest-Neighbor · 2-opt · Or-opt · Iterated Local Search) über die Wegpunkte einer beliebigen GPX-Datei — läuft komplett lokal im Browser, es wird nichts hochgeladen. Version 2: speicherschlankes Wegenetz für große Gebiete, Kachel-Zwischenspeicher.</div>
+  </header>
+  <section class="card">
+    <div class="field">
+      <label for="file">GPX-Datei (Wegpunkte)</label>
+      <input type="file" id="file" accept=".gpx,application/gpx+xml,text/xml,application/xml">
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Tourform</label>
+        <div class="choice">
+          <button type="button" id="btnOpen" class="active">Offener Weg</button>
+          <button type="button" id="btnClosed">Rundtour</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Distanzmodell</label>
+        <div class="choice">
+          <button type="button" id="btnBeeline" class="active">Luftlinie</button>
+          <button type="button" id="btnNetwork">Echtes Wegenetz (OSM, online)</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="budget">Rechenzeit (Sekunden)</label>
+        <input type="number" id="budget" min="2" max="900" value="25">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:0.6rem;">
+      <div class="field">
+        <button class="primary" id="btnRun" disabled>Optimieren</button>
+      </div>
+      <div class="field">
+        <button class="ghost" id="btnCancel" disabled>Abbrechen</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:0.6rem;">
+      <div class="field">
+        <label style="display:flex; align-items:center; gap:0.4rem; text-transform:none; letter-spacing:normal; font-size:0.8rem; color:#5a5748; margin-bottom:0.4rem;">
+          <input type="checkbox" id="includeNames" checked> Wegpunkt-Namen in GPX einschließen
+        </label>
+        <div style="display:flex; align-items:center; gap:0.25rem; margin-bottom:0.4rem; font-size:0.78rem; color:#5a5748; white-space:nowrap;">
+          Teilstrecken
+          <input type="number" id="trackSections" min="1" max="20" value="1" style="width:3.6rem; padding:0.2rem 0.3rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+        </div>
+        <button class="ghost" id="btnDownloadTrack" disabled>Track (GPX) herunterladen</button>
+      </div>
+      <div class="field">
+        <div style="display:flex; gap:0.4rem; margin-bottom:0.4rem; font-size:0.78rem; color:#5a5748; align-items:center; flex-wrap:nowrap;">
+          <label style="text-transform:none; letter-spacing:normal; display:flex; align-items:center; gap:0.25rem; white-space:nowrap;">
+            Teilstrecken
+            <input type="number" id="routeSections" min="1" max="20" value="1" style="width:3.6rem; padding:0.2rem 0.3rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          </label>
+          <label style="text-transform:none; letter-spacing:normal; display:flex; align-items:center; gap:0.25rem; white-space:nowrap;">
+            Toleranz(m)
+            <input type="number" id="routeTolerance" min="1" max="200" value="15" style="width:3.2rem; padding:0.2rem 0.3rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          </label>
+        </div>
+        <button class="ghost" id="btnDownloadRoute" disabled>Route (GPX) herunterladen</button>
+        <div style="margin-top:0.4rem;"><button class="ghost" id="btnDownloadRecalc" disabled title="Wenige, eindeutig einrastende Routenpunkte für die Neuberechnung in Basecamp (kürzeste Strecke, Bundesstraßen gesperrt)">Route für Neuberechnung (GPX)</button></div>
+      </div>
+      <div class="field">
+        <button class="ghost" id="btnCsv" disabled>Entfernungsliste (CSV) herunterladen</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:0.6rem;">
+      <div class="field">
+        <button class="ghost" id="btnExportMatrix" disabled>Distanzmatrix (JSON, für Analyse) exportieren</button>
+      </div>
+      <div class="field">
+        <button class="ghost" id="btnExportNetwork" disabled>Abgefragtes Wegenetz (GPX) exportieren</button>
+      </div>
+      <div class="field">
+        <button class="ghost" id="btnAnalyzeBacktrack" disabled>Doppelt gelaufene Strecke analysieren</button>
+      </div>
+    </div>
+
+    <details style="margin-top:0.4rem; margin-bottom:1rem;">
+      <summary style="cursor:pointer; font-size:0.82rem; color:var(--moss-dark); font-weight:600;">Erweiterte Einstellungen: Wegenetz-Download &amp; Zwischenspeicher</summary>
+      <div style="margin-top:0.6rem; font-size:0.85rem; display:flex; flex-direction:column; gap:0.6rem; padding:0.7rem 0.9rem; background:var(--paper-2); border:1px solid var(--line); border-radius:3px;">
+        <div style="font-size:0.8rem; color:#5a5748; margin-bottom:0.2rem;">Das Wegenetz wird in Kacheln von 0,1° × 0,15° (ca. 11 × 10 km) geladen — nur Kacheln im Umkreis des Puffers um mindestens einen Wegpunkt. Geladene Kacheln werden im Browser gespeichert (alle Wegtypen, Filter und Straf-Faktoren werden erst lokal angewendet), sodass weitere Läufe, andere Einstellungen oder überlappende Wegpunkt-Dateien keinen erneuten Download brauchen. Bricht der Download ab, wird beim nächsten Klick auf "Optimieren" nur der Rest nachgeladen.</div>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal; flex-wrap:wrap;">
+          Puffer um die Wegpunkte (km)
+          <input type="number" id="tileBuffer" min="1" max="30" step="1" value="8" style="width:4.5rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <span style="font-size:0.78rem; color:#6b6858;">(Wege weiter weg als dieser Abstand von jedem Wegpunkt werden nicht berücksichtigt)</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal; flex-wrap:wrap;">
+          Gleichzeitige Anfragen an Overpass
+          <input type="number" id="parallelRequests" min="1" max="4" step="1" value="2" style="width:4rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <span style="font-size:0.78rem; color:#6b6858;">(öffentliche Server erlauben meist 2; bei häufigen Fehlern auf 1 senken)</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;"><input type="checkbox" id="useCache" checked> Zwischenspeicher im Browser verwenden</label>
+        <div style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap;">
+          <button type="button" class="ghost" id="btnClearCache" style="padding:0.35rem 0.8rem; font-size:0.82rem;">Zwischenspeicher leeren (frische OSM-Daten)</button>
+          <span id="cacheInfo" style="font-size:0.78rem; color:#6b6858;"></span>
+        </div>
+      </div>
+    </details>
+
+    <details style="margin-top:0.4rem; margin-bottom:1rem;">
+      <summary style="cursor:pointer; font-size:0.82rem; color:var(--moss-dark); font-weight:600;">Erweiterte Einstellungen: Straßentypen für "Echtes Wegenetz"</summary>
+      <div style="margin-top:0.6rem; font-size:0.85rem; display:flex; flex-direction:column; gap:0.4rem; padding:0.7rem 0.9rem; background:var(--paper-2); border:1px solid var(--line); border-radius:3px;">
+        <div style="font-size:0.8rem; color:#5a5748; margin-bottom:0.2rem;">Standardmäßig sind alle Wegtypen erlaubt — hier kannst du bestimmte Straßentypen für die Routensuche ausschließen (z. B. weil dort Wandern nicht sinnvoll/erlaubt ist).</div>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;"><input type="checkbox" id="exclMotorway" checked> Autobahnen &amp; Kraftfahrstraßen ausschließen (hart, kein Umweg zu groß)</label>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;">
+          Bundesstraßen: Straf-Faktor
+          <input type="number" id="primaryPenalty" min="1" max="20" step="0.5" value="4" style="width:4.5rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <span style="font-size:0.78rem; color:#6b6858;">(1 = ganz normal erlaubt, höher = nur wenn Alternative entsprechend viel länger wäre)</span>
+        </label>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;"><input type="checkbox" id="exclSecondary"> Landstraßen / Kreisstraßen ausschließen</label>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;"><input type="checkbox" id="exclResidential"> Orts-/Wohnstraßen ausschließen</label>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;"><input type="checkbox" id="exclTrack"> Wirtschafts-/Feldwege ausschließen</label>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;"><input type="checkbox" id="exclFootCycle"> Fuß-/Radwege ausschließen</label>
+        <div style="border-top:1px solid var(--line); margin:0.3rem 0;"></div>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;"><input type="checkbox" id="inclFerry" checked> Fähren einschließen (haben kein "highway"-Tag, eigene Abfrage nötig)</label>
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal;"><input type="checkbox" id="inclAerialway" checked> Seilbahnen einschließen (dito)</label>
+      </div>
+    </details>
+
+    <details style="margin-top:0.4rem; margin-bottom:1rem;">
+      <summary style="cursor:pointer; font-size:0.82rem; color:var(--moss-dark); font-weight:600;">Erweiterte Einstellungen: Wegeeigenschaften für "Echtes Wegenetz"</summary>
+      <div style="margin-top:0.6rem; font-size:0.85rem; display:flex; flex-direction:column; gap:0.6rem; padding:0.7rem 0.9rem; background:var(--paper-2); border:1px solid var(--line); border-radius:3px;">
+        <div style="font-size:0.8rem; color:#5a5748; margin-bottom:0.2rem;">Straf-Faktoren wirken nur auf die Wegwahl (welcher Weg genommen wird) — die am Ende ausgegebene Streckenlänge ist immer die echte, tatsächlich gelaufene Distanz, nie der künstlich erhöhte Rechenwert. Ein Straf-Faktor von 1 bedeutet: diese Eigenschaft spielt keine Rolle.</div>
+
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal; flex-wrap:wrap;">
+          Belag: Straf-Faktor für befestigte/asphaltierte Wege
+          <input type="number" id="surfacePenalty" min="1" max="20" step="0.5" value="1" style="width:4.5rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <span style="font-size:0.78rem; color:#6b6858;">(surface=asphalt/concrete/paving_stones/sett/cobblestone; 1 = Belag egal)</span>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal; flex-wrap:wrap;">
+          SAC-Wanderskala: maximal zulässige Schwierigkeit
+          <select id="sacScaleMax" style="padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+            <option value="">keine Begrenzung</option>
+            <option value="hiking">T1 – Wandern</option>
+            <option value="mountain_hiking">T2 – Bergwandern</option>
+            <option value="demanding_mountain_hiking">T3 – Anspruchsvolles Bergwandern</option>
+            <option value="alpine_hiking">T4 – Alpinwandern</option>
+            <option value="demanding_alpine_hiking">T5 – Anspruchsvolles Alpinwandern</option>
+            <option value="difficult_alpine_hiking">T6 – Schwieriges Alpinwandern</option>
+          </select>
+          <span style="font-size:0.78rem; color:#6b6858;">(harte Grenze: schwierigere Wege werden komplett ausgeschlossen, nicht nur bestraft; nur getaggte Wege betroffen)</span>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal; flex-wrap:wrap;">
+          Wegsichtbarkeit: Straf-Faktor für schlecht sichtbare Pfade
+          <input type="number" id="visibilityPenalty" min="1" max="20" step="0.5" value="1" style="width:4.5rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <span style="font-size:0.78rem; color:#6b6858;">(trail_visibility=bad/horrible/no; 1 = alle Wege gleich)</span>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal; flex-wrap:wrap;">
+          Mindestbreite (m), darunter Straf-Faktor
+          <input type="number" id="minWidth" min="0" max="10" step="0.1" value="0" style="width:4rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <input type="number" id="widthPenalty" min="1" max="20" step="0.5" value="1" style="width:4.5rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <span style="font-size:0.78rem; color:#6b6858;">(Mindestbreite 0 = wirkungslos/deaktiviert; nur Wege mit explizitem width-Tag betroffen, das ist selten gepflegt)</span>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal; flex-wrap:wrap;">
+          Wegzustand: Straf-Faktor für unebene/schlechte Wege
+          <input type="number" id="smoothnessPenalty" min="1" max="20" step="0.5" value="1" style="width:4.5rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <span style="font-size:0.78rem; color:#6b6858;">(smoothness=bad/very_bad/horrible/very_horrible/impassable; 1 = Zustand egal)</span>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:0.5rem; text-transform:none; letter-spacing:normal; flex-wrap:wrap;">
+          Fernwanderwege: Bonus-Faktor für ausgewiesene Routen
+          <input type="number" id="hikingBonus" min="0.1" max="1" step="0.05" value="1" style="width:4.5rem; padding:0.25rem 0.4rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);">
+          <span style="font-size:0.78rem; color:#6b6858;">(OSM-Relation route=hiking, z. B. ein ausgeschilderter Fernwanderweg; Wert &lt;1 macht sie günstiger/bevorzugt, 1 = kein Bonus)</span>
+        </label>
+      </div>
+    </details>
+
+    <div id="status">Noch keine Datei geladen.</div>
+    <div id="networkError" style="display:none; margin-top:0.6rem; padding:0.6rem 0.8rem; border:1px solid var(--red); border-radius:3px; background:#f3e6e3; color:var(--red); font-size:0.85rem; white-space:pre-wrap;"></div>
+
+    <div class="stats" id="stats" style="display:none;">
+      <div class="stat"><div class="n" id="statLen">–</div><div class="l">Länge (km)</div></div>
+      <div class="stat"><div class="n" id="statN">–</div><div class="l">Wegpunkte</div></div>
+      <div class="stat"><div class="n" id="statIter">–</div><div class="l">Perturbationen</div></div>
+      <div class="stat"><div class="n" id="statTime">–</div><div class="l">Laufzeit</div></div>
+    </div>
+
+    <div id="compareBox" class="hint" style="display:none; margin-top:0.8rem; padding:0.6rem 0.8rem; border:1px solid var(--line); border-radius:3px; background:var(--paper);"></div>
+
+    <canvas id="plot" width="860" height="480" style="display:none;"></canvas>
+    <div class="hint">Luftlinie: reine geometrische Distanz, keine Wegverläufe, keine Höhenmeter. Echtes Wegenetz: Wege aus OpenStreetMap (Overpass API) im Umkreis (Puffer) deiner Wegpunkte, jeder Punkt wird per Luftlinie an den nächsten Weg angebunden — Wegeeigenschaften (Höhe, Auf-/Abstieg, Wegequalität) fließen noch nicht ein. Hinweis: Für "Echtes Wegenetz" braucht die Seite Internetzugriff; falls per Doppelklick als lokale Datei geöffnet, blockieren manche Browser das (siehe Fehlermeldung, dann hilft ein lokaler Webserver statt Doppelklick).</div>
+  </section>
+
+  <div class="foot">Algorithmus: Multi-Start Nearest-Neighbor → 2-opt → Or-opt(1–3) → Iterated Local Search mit Double-Bridge-Perturbation. Für den offenen Weg wird ein Dummy-Knoten mit Distanz 0 zu allen Punkten ergänzt, als Rundtour gelöst und an der Dummy-Kante aufgetrennt.</div>
+</div>
+
+<script>
+let points = []; // {lat, lon, ele, name}
+let D = null;     // distance matrix (Float64Array flattened), includes dummy row/col at index n
+let n = 0;
+let tourMode = 'open'; // 'open' | 'closed'
+let distanceMode = 'beeline'; // 'beeline' | 'network'
+let networkReadyForPoints = null; // Referenz auf 'points', für die die Netz-Matrix zuletzt berechnet wurde
+let lastNetworkGraph = null; // kompakter Graph des zuletzt geladenen Wegenetzes (siehe buildCompactGraph)
+let lastNetworkGraphForPoints = null; // Referenz auf 'points', für die lastNetworkGraph gilt
+let lastConnectorDistances = null; // Anschlussweg (Luftlinie zum Wegenetz) je Wegpunkt, Index passend zu 'points'
+let lastConnectorDistancesForPoints = null;
+let bestResult = null; // {order:[idx...], length, mode}
+let running = false;
+let cancelRequested = false;
+
+class CancelledError extends Error {
+  constructor(msg){ super(msg || 'Abgebrochen'); this.name = 'CancelledError'; }
+}
+function checkCancel(){
+  if(cancelRequested) throw new CancelledError();
+}
+
+let elapsedTimerHandle = null;
+function formatDuration(totalSec){
+  const h = Math.floor(totalSec/3600), m = Math.floor((totalSec%3600)/60), s = totalSec%60;
+  const mm = String(m).padStart(2,'0'), ss = String(s).padStart(2,'0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+}
+function startElapsedTimer(){
+  const t0 = performance.now();
+  const update = () => { el('statTime').textContent = formatDuration(Math.floor((performance.now()-t0)/1000)); };
+  update();
+  elapsedTimerHandle = setInterval(update, 500);
+  return t0;
+}
+function stopElapsedTimer(t0){
+  if(elapsedTimerHandle){ clearInterval(elapsedTimerHandle); elapsedTimerHandle = null; }
+  const totalSec = Math.floor((performance.now()-t0)/1000);
+  el('statTime').textContent = formatDuration(totalSec);
+  return totalSec;
+}
+
+// Zwischenspeicher der letzten Ergebnisse je Distanzmodell und Tourform, für den Vergleich:
+let savedResults = { beeline: {open:null, closed:null}, network: {open:null, closed:null} };
+let inputBaseName = 'wegpunkte'; // Basisname der eingelesenen GPX-Datei, ohne Endung
+
+const el = id => document.getElementById(id);
+
+el('btnCancel').addEventListener('click', () => {
+  if(!running) return;
+  cancelRequested = true;
+  el('btnCancel').disabled = true;
+  el('status').textContent = 'Abbruch angefordert — wird beim nächsten Zwischenschritt gestoppt …';
+});
+
+el('btnOpen').addEventListener('click', () => setMode('open'));
+el('btnClosed').addEventListener('click', () => setMode('closed'));
+function setMode(m){
+  tourMode = m;
+  el('btnOpen').classList.toggle('active', m==='open');
+  el('btnClosed').classList.toggle('active', m==='closed');
+  updateCompareBox();
+}
+
+el('btnBeeline').addEventListener('click', () => setDistanceMode('beeline'));
+el('btnNetwork').addEventListener('click', () => setDistanceMode('network'));
+
+// Ändert sich eine Wegtyp-Einstellung, ist die zwischengespeicherte Netz-Matrix nicht mehr gültig.
+['exclMotorway','primaryPenalty','exclSecondary','exclResidential','exclTrack','exclFootCycle','inclFerry','inclAerialway',
+ 'surfacePenalty','sacScaleMax','visibilityPenalty','minWidth','widthPenalty','smoothnessPenalty','hikingBonus','tileBuffer'].forEach(id => {
+  const cb = document.getElementById(id);
+  if(cb) cb.addEventListener('change', () => {
+    networkReadyForPoints = null;
+    lastNetworkGraph = null;
+    lastNetworkGraphForPoints = null;
+    dijkstraEngine = null;
+  });
+});
+function setDistanceMode(m){
+  distanceMode = m;
+  el('btnBeeline').classList.toggle('active', m==='beeline');
+  el('btnNetwork').classList.toggle('active', m==='network');
+}
+
+el('file').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const text = await f.text();
+  inputBaseName = f.name.replace(/\.[^./\\]+$/, '') || 'wegpunkte';
+  try{
+    points = parseGPX(text);
+  }catch(err){
+    el('status').textContent = 'Fehler beim Einlesen: ' + err.message;
+    return;
+  }
+  n = points.length;
+  if(n < 4){
+    el('status').textContent = 'Zu wenige Wegpunkte gefunden (' + n + '). Mindestens 4 nötig.';
+    el('btnRun').disabled = true;
+    return;
+  }
+  buildBeelineDistanceMatrix();
+  el('status').textContent = n + ' Wegpunkte geladen. Bereit zur Optimierung.';
+  el('btnRun').disabled = false;
+  el('btnDownloadTrack').disabled = true;
+  el('btnDownloadRoute').disabled = true;
+  el('btnDownloadRecalc').disabled = true;
+  el('btnCsv').disabled = true;
+  el('btnExportMatrix').disabled = true;
+  el('btnExportNetwork').disabled = true;
+  el('btnAnalyzeBacktrack').disabled = true;
+  bestResult = null;
+  savedResults = { beeline: {open:null, closed:null}, network: {open:null, closed:null} };
+  lastNetworkGraph = null;
+  lastNetworkGraphForPoints = null;
+  dijkstraEngine = null;
+  lastConnectorDistances = null;
+  lastConnectorDistancesForPoints = null;
+  el('compareBox').style.display = 'none';
+  el('networkError').style.display = 'none';
+  drawPlot(null);
+});
+
+function parseGPX(text){
+  const xml = new DOMParser().parseFromString(text, 'text/xml');
+  if(xml.querySelector('parsererror')) throw new Error('kein gültiges XML/GPX');
+  const wpts = Array.from(xml.getElementsByTagName('wpt'));
+  if(wpts.length === 0) throw new Error('keine <wpt>-Elemente gefunden');
+  return wpts.map((w, i) => {
+    const lat = parseFloat(w.getAttribute('lat'));
+    const lon = parseFloat(w.getAttribute('lon'));
+    const eleEl = w.getElementsByTagName('ele')[0];
+    const nameEl = w.getElementsByTagName('name')[0];
+    return {
+      lat, lon,
+      ele: eleEl ? parseFloat(eleEl.textContent) : null,
+      name: nameEl ? nameEl.textContent.trim() : ('Punkt ' + (i+1))
+    };
+  });
+}
+
+function haversine(lat1, lon1, lat2, lon2){
+  const R = 6371.0088;
+  const toRad = d => d * Math.PI / 180;
+  const dphi = toRad(lat2-lat1);
+  const dl = toRad(lon2-lon1);
+  const p1 = toRad(lat1), p2 = toRad(lat2);
+  const a = Math.sin(dphi/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+
+function buildBeelineDistanceMatrix(){
+  // build (n+1) x (n+1) matrix; index n is the dummy node (0 distance to all), used only for open-path mode
+  const m = n + 1;
+  D = new Float64Array(m*m);
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      const d = haversine(points[i].lat, points[i].lon, points[j].lat, points[j].lon);
+      D[i*m+j] = d;
+      D[j*m+i] = d;
+    }
+  }
+  // dummy row/col already zero-initialized
+  networkReadyForPoints = null; // Netz-Matrix (falls vorhanden) gilt nicht mehr als aktuell
+}
+
+function dIdx(a,b){ return a*(n+1)+b; }
+
+// ---------- Echtes Wegenetz (OpenStreetMap via Overpass) — speicherschlanke Version 2 ----------
+//
+// Überblick:
+//  1. Kachelauswahl: festes, globales Kachelraster (0,1° × 0,15°); geladen werden nur Kacheln,
+//     die höchstens "Puffer" km von irgendeinem Wegpunkt entfernt sind.
+//  2. Download: je Kachel ALLE Wegtypen (Filter werden erst lokal angewendet), sofort in ein
+//     kompaktes Format (Zahlen-Arrays) umgewandelt und im Browser-Zwischenspeicher (IndexedDB)
+//     abgelegt. Erneute Läufe / andere Einstellungen brauchen keinen erneuten Download.
+//  3. Graph: nur Kreuzungen und Wegenden sind Knoten; die Zwischenpunkte eines Wegstücks werden
+//     zu einer Kante ("Kette") zusammengefasst. Geometrie bleibt in kompakten Arrays erhalten.
+//     Knoten-Identität wie in Version 1: Koordinate auf 6 Nachkommastellen gerundet.
+//  4. Anbindung der Wegpunkte per Lot auf das nächste Wegsegment; die betroffene Kette wird am
+//     Lotpunkt aufgetrennt (exakt, auch bei Lot auf einen Stützpunkt oder mehreren Wegpunkten
+//     auf derselben Kette).
+//  5. Exaktes Ausdünnen: Sackgassen-Äste ohne Wegpunkt und Netzteile ohne Wegpunkt werden
+//     entfernt — sie können nie Teil eines kürzesten Weges zwischen Wegpunkten sein.
+//  6. Dijkstra auf Zahlen-Arrays (CSR-Adjazenz, indizierter Binärheap).
+
+const TILE_LAT_DEG = 0.1, TILE_LON_DEG = 0.15;
+const TILE_FORMAT_VERSION = 1;
+const HW_CODES = ['motorway','motorway_link','trunk','trunk_link','primary','primary_link',
+  'secondary','secondary_link','tertiary','tertiary_link','residential','living_street','unclassified',
+  'track','footway','path','steps','bridleway','cycleway','pedestrian'];
+const HW_INDEX = new Map(HW_CODES.map((v,i) => [v, i+1])); // 0 = sonstiger highway-Wert
+const F_HW = 1, F_FERRY = 2, F_AERIAL = 4, F_PAVED = 8, F_BADVIS = 16, F_BADSMOOTH = 32;
+// Kantenklassen für den Basecamp-Export: 0 normal, 1 Bundesstraße, 2 Autobahn/Kraftfahrstraße, 3 Fähre, 4 Seilbahn
+const CLS_NORMAL = 0, CLS_PRIMARY = 1, CLS_MOTORWAY = 2, CLS_FERRY = 3, CLS_AERIAL = 4;
+const CLS_LABEL = { 1: 'B-Str.', 2: 'Autobahn/Kraftfahrstr.', 3: 'Fähre', 4: 'Seilbahn' };
+
+const OVERPASS_MIRRORS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter',
+];
+
+function sleepMs(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+// Klassifikation der OSM-Tag-Werte in "betroffen" (bekommt Straf-Faktor) vs. "unauffällig".
+const PAVED_SURFACES = new Set(['paved','asphalt','concrete','concrete:lanes','concrete:plates','paving_stones','sett','cobblestone','metal','wood']);
+const BAD_VISIBILITY = new Set(['bad','horrible','no']);
+const BAD_SMOOTHNESS = new Set(['bad','very_bad','horrible','very_horrible','impassable']);
+const SAC_SCALE_ORDER = ['hiking','mountain_hiking','demanding_mountain_hiking','alpine_hiking','demanding_alpine_hiking','difficult_alpine_hiking'];
+
+function getSurfacePenaltyFactor(){
+  const v = parseFloat(el('surfacePenalty') && el('surfacePenalty').value);
+  return (!isFinite(v) || v < 1) ? 1 : Math.min(v, 50);
+}
+function getVisibilityPenaltyFactor(){
+  const v = parseFloat(el('visibilityPenalty') && el('visibilityPenalty').value);
+  return (!isFinite(v) || v < 1) ? 1 : Math.min(v, 50);
+}
+function getSmoothnessPenaltyFactor(){
+  const v = parseFloat(el('smoothnessPenalty') && el('smoothnessPenalty').value);
+  return (!isFinite(v) || v < 1) ? 1 : Math.min(v, 50);
+}
+function getMinWidth(){
+  const v = parseFloat(el('minWidth') && el('minWidth').value);
+  return (!isFinite(v) || v < 0) ? 0 : v;
+}
+function getWidthPenaltyFactor(){
+  const v = parseFloat(el('widthPenalty') && el('widthPenalty').value);
+  return (!isFinite(v) || v < 1) ? 1 : Math.min(v, 50);
+}
+function getHikingBonusFactor(){
+  const v = parseFloat(el('hikingBonus') && el('hikingBonus').value);
+  if(!isFinite(v)) return 1;
+  return Math.max(0.1, Math.min(v, 1));
+}
+function getSacScaleMax(){
+  const v = el('sacScaleMax') && el('sacScaleMax').value;
+  return v && SAC_SCALE_ORDER.includes(v) ? v : null; // null = keine Begrenzung
+}
+function getTileBufferKm(){
+  const v = parseFloat(el('tileBuffer') && el('tileBuffer').value);
+  return (!isFinite(v) || v < 1) ? 8 : Math.min(v, 30);
+}
+function getParallelRequests(){
+  const v = parseInt(el('parallelRequests') && el('parallelRequests').value);
+  return (!isFinite(v) || v < 1) ? 2 : Math.min(v, 4);
+}
+function cacheEnabled(){ return !el('useCache') || el('useCache').checked; }
+
+// Liest die angehakten Ausschluss-Checkboxen und liefert die Liste der auszuschließenden
+// OSM-highway-Werte. Nichts angehakt = alle Straßen-/Wegtypen erlaubt.
+function getExcludedHighwayTypes(){
+  const excluded = [];
+  if(el('exclMotorway') && el('exclMotorway').checked) excluded.push('motorway','motorway_link','trunk','trunk_link');
+  if(el('exclSecondary') && el('exclSecondary').checked) excluded.push('secondary','secondary_link','tertiary','tertiary_link');
+  if(el('exclResidential') && el('exclResidential').checked) excluded.push('residential','living_street','unclassified');
+  if(el('exclTrack') && el('exclTrack').checked) excluded.push('track');
+  if(el('exclFootCycle') && el('exclFootCycle').checked) excluded.push('footway','path','steps','bridleway','cycleway','pedestrian');
+  return excluded;
+}
+
+// Straf-Faktor für Bundesstraßen (primary/primary_link): wirkt nur auf die Wegwahl
+// (Dijkstra-Suchkosten), nicht auf die tatsächlich ausgegebene/reale Distanz.
+function getPrimaryPenaltyFactor(){
+  const v = parseFloat(el('primaryPenalty') && el('primaryPenalty').value);
+  if(!isFinite(v) || v < 1) return 1;
+  return Math.min(v, 50);
+}
+
+// Fähren und Seilbahnen tragen kein "highway"-Tag, sondern eigene Kennzeichnungen
+// (route=ferry bzw. aerialway=*) — werden immer mit geladen, lokal ein-/ausgeschlossen.
+function getExtraWayTypes(){
+  return {
+    ferries: !el('inclFerry') || el('inclFerry').checked,
+    aerialways: !el('inclAerialway') || el('inclAerialway').checked
+  };
+}
+
+// ---------- 1. Kachelauswahl ----------
+
+function tileRect(i, j){
+  return { minLat: i*TILE_LAT_DEG, maxLat: (i+1)*TILE_LAT_DEG, minLon: j*TILE_LON_DEG, maxLon: (j+1)*TILE_LON_DEG };
+}
+
+// Alle Kacheln des festen Rasters, deren Rechteck höchstens bufferKm von einem Wegpunkt entfernt ist.
+function selectTiles(pts, bufferKm){
+  const found = new Map();
+  for(const p of pts){
+    const cosLat = Math.cos(p.lat*Math.PI/180);
+    const dLat = bufferKm/111.0, dLon = bufferKm/(111.320*cosLat);
+    const i0 = Math.floor((p.lat-dLat)/TILE_LAT_DEG), i1 = Math.floor((p.lat+dLat)/TILE_LAT_DEG);
+    const j0 = Math.floor((p.lon-dLon)/TILE_LON_DEG), j1 = Math.floor((p.lon+dLon)/TILE_LON_DEG);
+    for(let i=i0;i<=i1;i++){
+      for(let j=j0;j<=j1;j++){
+        const key = i + '_' + j;
+        if(found.has(key)) continue;
+        const r = tileRect(i, j);
+        const dy = Math.max(0, r.minLat - p.lat, p.lat - r.maxLat) * 111.0;
+        const dx = Math.max(0, r.minLon - p.lon, p.lon - r.maxLon) * 111.320 * cosLat;
+        if(Math.hypot(dx, dy) <= bufferKm) found.set(key, Object.assign({ key, i, j }, r));
+      }
+    }
+  }
+  return Array.from(found.values()).sort((a,b) => (a.i - b.i) || (a.j - b.j));
+}
+
+// ---------- 2. Zwischenspeicher (IndexedDB) ----------
+
+const TileCache = {
+  db: null, unavailable: false, full: false,
+  async open(){
+    if(this.db || this.unavailable) return this.db;
+    try{
+      if(typeof indexedDB === 'undefined') throw new Error('IndexedDB nicht verfügbar');
+      this.db = await new Promise((resolve, reject) => {
+        const rq = indexedDB.open('wegpunkt-optimierer2-kacheln', 1);
+        rq.onupgradeneeded = () => {
+          const db = rq.result;
+          if(!db.objectStoreNames.contains('tiles')) db.createObjectStore('tiles');
+          if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+        };
+        rq.onsuccess = () => resolve(rq.result);
+        rq.onerror = () => reject(rq.error || new Error('Öffnen fehlgeschlagen'));
+        rq.onblocked = () => reject(new Error('Datenbank blockiert'));
+      });
+    }catch(err){
+      console.warn('Zwischenspeicher nicht verfügbar:', err);
+      this.unavailable = true;
+      this.db = null;
+    }
+    return this.db;
+  },
+  _req(storeName, mode, fn){
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(storeName, mode);
+      const store = tx.objectStore(storeName);
+      const rq = fn(store);
+      let result;
+      if(rq) rq.onsuccess = () => { result = rq.result; };
+      tx.oncomplete = () => resolve(result);
+      tx.onerror = () => reject(tx.error || (rq && rq.error));
+      tx.onabort = () => reject(tx.error || new Error('Transaktion abgebrochen'));
+    });
+  },
+  async get(key){
+    if(!(await this.open())) return null;
+    try{
+      const rec = await this._req('tiles', 'readonly', s => s.get(key));
+      return (rec && rec.v === TILE_FORMAT_VERSION) ? rec : null;
+    }catch(err){ console.warn('Lesen aus Zwischenspeicher fehlgeschlagen:', err); return null; }
+  },
+  async put(key, rec, bytes){
+    if(this.full || !(await this.open())) return false;
+    try{
+      await new Promise((resolve, reject) => {
+        const tx = this.db.transaction(['tiles','meta'], 'readwrite');
+        tx.objectStore('tiles').put(rec, key);
+        tx.objectStore('meta').put({ bytes, time: Date.now(), ways: rec.W }, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error || new Error('Transaktion abgebrochen'));
+      });
+      return true;
+    }catch(err){
+      console.warn('Schreiben in Zwischenspeicher fehlgeschlagen:', err);
+      if(err && (err.name === 'QuotaExceededError' || /quota/i.test(String(err.message)))) this.full = true;
+      return false;
+    }
+  },
+  async stats(){
+    if(!(await this.open())) return null;
+    try{
+      const metas = await this._req('meta', 'readonly', s => s.getAll());
+      let bytes = 0, oldest = Infinity, newest = 0;
+      for(const m of metas){ bytes += m.bytes || 0; oldest = Math.min(oldest, m.time); newest = Math.max(newest, m.time); }
+      return { count: metas.length, bytes, oldest, newest };
+    }catch(err){ return null; }
+  },
+  async clear(){
+    if(!(await this.open())) return false;
+    await new Promise((resolve, reject) => {
+      const tx = this.db.transaction(['tiles','meta'], 'readwrite');
+      tx.objectStore('tiles').clear();
+      tx.objectStore('meta').clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    this.full = false;
+    return true;
+  }
+};
+
+async function refreshCacheInfo(){
+  const box = el('cacheInfo');
+  if(!box) return;
+  const st = await TileCache.stats();
+  if(!st){ box.textContent = TileCache.unavailable ? 'Zwischenspeicher in diesem Browser nicht verfügbar — Kacheln werden bei jedem Lauf neu geladen.' : ''; return; }
+  if(st.count === 0){ box.textContent = 'Zwischenspeicher leer.'; return; }
+  const fmt = t => new Date(t).toLocaleDateString('de-DE');
+  box.textContent = `Zwischenspeicher: ${st.count} Kacheln, ca. ${(st.bytes/1048576).toFixed(0)} MB Rohdaten-Download ` +
+    `(Stand ${fmt(st.oldest)}${st.oldest !== st.newest && fmt(st.oldest) !== fmt(st.newest) ? ' bis ' + fmt(st.newest) : ''}).`;
+}
+
+// ---------- 3. Download einer Kachel + Umwandlung ins kompakte Format ----------
+
+function buildTileQuery(t){
+  const bb = `${t.minLat.toFixed(6)},${t.minLon.toFixed(6)},${t.maxLat.toFixed(6)},${t.maxLon.toFixed(6)}`;
+  return `[out:json][timeout:120];\n(\n  way["highway"](${bb});\n  way["route"="ferry"](${bb});\n  way["aerialway"]["aerialway"!="goods"](${bb});\n);\nout geom;\n` +
+         `rel["route"="hiking"](${bb})->.hikingRel;\nway(r.hikingRel)->.hikingWays;\n.hikingWays out ids;\n`;
+}
+
+// Wandelt die Overpass-Antwort in Zahlen-Arrays um (Koordinaten als ganze Zahlen in 1e-7 Grad,
+// d. h. exakt in OSM-Genauigkeit). Nur die für die Bewertung nötigen Tag-Informationen bleiben erhalten.
+function compactTile(data){
+  const els = data.elements || [];
+  let W = 0, R = 0, H = 0;
+  for(const e of els){
+    if(e.type !== 'way') continue;
+    if(Array.isArray(e.geometry)){ W++; R += e.geometry.length; } else if(e.id != null) H++;
+  }
+  const wayIds = new Float64Array(W), flags = new Uint8Array(W), hw = new Uint8Array(W), sac = new Uint8Array(W);
+  const width = new Float64Array(W), nodeOff = new Uint32Array(W+1);
+  const lat = new Int32Array(R), lon = new Int32Array(R), hikingIds = new Float64Array(H);
+  let w = 0, r = 0, h = 0;
+  for(const e of els){
+    if(e.type !== 'way') continue;
+    if(!Array.isArray(e.geometry)){ if(e.id != null) hikingIds[h++] = e.id; continue; }
+    const tags = e.tags || {};
+    let f = 0;
+    if(tags.highway != null){ f |= F_HW; hw[w] = HW_INDEX.get(tags.highway) || 0; }
+    if(tags.route === 'ferry') f |= F_FERRY;
+    if(tags.aerialway != null && tags.aerialway !== 'goods') f |= F_AERIAL;
+    if(PAVED_SURFACES.has(tags.surface)) f |= F_PAVED;
+    if(BAD_VISIBILITY.has(tags.trail_visibility)) f |= F_BADVIS;
+    if(BAD_SMOOTHNESS.has(tags.smoothness)) f |= F_BADSMOOTH;
+    flags[w] = f;
+    sac[w] = tags.sac_scale ? (SAC_SCALE_ORDER.indexOf(tags.sac_scale) + 1) : 0; // 0 = nicht getaggt/unbekannt
+    width[w] = tags.width != null ? parseFloat(tags.width) : NaN;
+    wayIds[w] = e.id != null ? e.id : -1;
+    nodeOff[w] = r;
+    for(const g of e.geometry){
+      if(!g || g.lat == null || g.lon == null) continue; // unvollständige Geometrie überspringen
+      lat[r] = Math.round(g.lat*1e7); lon[r] = Math.round(g.lon*1e7); r++;
+    }
+    w++;
+  }
+  nodeOff[W] = r;
+  return { v: TILE_FORMAT_VERSION, W, wayIds, flags, hw, sac, width, nodeOff,
+           lat: r < R ? lat.slice(0, r) : lat, lon: r < R ? lon.slice(0, r) : lon,
+           hikingIds: h < H ? hikingIds.slice(0, h) : hikingIds };
+}
+
+// Fragt eine Kachel ab; probiert bei Fehlern/Überlastung nacheinander mehrere Overpass-Spiegelserver,
+// mit Wartezeiten zwischen den Runden. Eine Antwort mit "remark" (Abbruch/Timeout auf dem Server,
+// Daten unvollständig) gilt als Fehler und wird NICHT gespeichert.
+async function fetchTileFromOverpass(t){
+  const query = buildTileQuery(t);
+  const waits = [0, 8000, 25000];
+  let lastErr = null;
+  for(let round=0; round<waits.length; round++){
+    if(waits[round] > 0){
+      const until = performance.now() + waits[round];
+      while(performance.now() < until){ await sleepMs(250); checkCancel(); }
+    }
+    for(const url of OVERPASS_MIRRORS){
+      checkCancel();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 150000);
+      try{
+        const resp = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(query), signal: controller.signal });
+        if(!resp.ok) throw new Error('HTTP ' + resp.status + (resp.status === 429 ? ' (zu viele Anfragen)' : resp.status === 504 ? ' (Server überlastet)' : ''));
+        const text = await resp.text();
+        const data = JSON.parse(text);
+        if(data.remark && /error|timed out|out of memory|abort/i.test(data.remark)) throw new Error('Server-Abbruch: ' + data.remark);
+        return { data, bytes: text.length };
+      }catch(err){
+        lastErr = err;
+        if(cancelRequested) throw new CancelledError();
+      }finally{
+        clearTimeout(timer);
+      }
+    }
+  }
+  throw new Error(lastErr ? lastErr.message : 'unbekannter Fehler');
+}
+
+// Lädt alle benötigten Kacheln (Zwischenspeicher zuerst, sonst Overpass) und liefert die kompakten Datensätze.
+async function loadTiles(tiles, statusCb){
+  const useCache = cacheEnabled() && !!(await TileCache.open());
+  const records = new Array(tiles.length).fill(null);
+  const toFetch = [];
+  let fromCache = 0;
+  for(let i=0;i<tiles.length;i++){
+    checkCancel();
+    if(useCache){
+      const rec = await TileCache.get(tiles[i].key);
+      if(rec){ records[i] = rec; fromCache++; }
+      else toFetch.push(i);
+    } else toFetch.push(i);
+    if((i & 7) === 0) statusCb(`Lese Zwischenspeicher: Kachel ${i+1}/${tiles.length} …`);
+  }
+  let fetched = 0, failed = [], bytesTotal = 0, nextIdx = 0;
+  const parallel = Math.min(getParallelRequests(), Math.max(1, toFetch.length));
+  const tStart = performance.now();
+  async function worker(){
+    while(nextIdx < toFetch.length){
+      const i = toFetch[nextIdx++];
+      checkCancel();
+      try{
+        const { data, bytes } = await fetchTileFromOverpass(tiles[i]);
+        const rec = compactTile(data);
+        records[i] = rec;
+        bytesTotal += bytes;
+        if(useCache) await TileCache.put(tiles[i].key, rec, bytes);
+      }catch(err){
+        if(err instanceof CancelledError) throw err;
+        failed.push(i);
+        console.warn('Kachel', tiles[i].key, 'fehlgeschlagen:', err.message);
+      }
+      fetched++;
+      const el_s = (performance.now() - tStart)/1000;
+      const rest = fetched > 0 ? el_s/fetched*(toFetch.length - fetched) : 0;
+      statusCb(`Lade Wegenetz von OpenStreetMap (Overpass API): ${fetched}/${toFetch.length} neue Kacheln ` +
+        `(${fromCache} aus Zwischenspeicher, ${(bytesTotal/1048576).toFixed(0)} MB geladen` +
+        (failed.length ? `, ${failed.length} fehlgeschlagen` : '') +
+        (fetched < toFetch.length ? `, Restzeit ca. ${formatDuration(Math.round(rest))}` : '') + `) …`);
+      await sleepMs(250); // dem öffentlichen Server etwas Luft lassen
+    }
+  }
+  const workers = [];
+  for(let k=0;k<parallel;k++) workers.push(worker());
+  await Promise.all(workers);
+  if(useCache) refreshCacheInfo();
+  return { records, failed, fromCache, fetched: toFetch.length - failed.length, bytesTotal, useCache };
+}
+
+// ---------- 4. Kompakter Graph ----------
+
+// Wachsende Zahlen-Arrays (verdoppeln bei Bedarf), am Ende auf die tatsächliche Länge gekürzt.
+class GrowArray{
+  constructor(Type, cap){ this.T = Type; this.a = new Type(Math.max(16, cap|0)); this.n = 0; }
+  push(v){ if(this.n === this.a.length){ const b = new this.T(this.a.length*2); b.set(this.a); this.a = b; } this.a[this.n++] = v; }
+  final(){ return this.n === this.a.length ? this.a : this.a.slice(0, this.n); }
+}
+
+function lowerBound(arr, x){
+  let lo = 0, hi = arr.length;
+  while(lo < hi){ const mid = (lo+hi) >>> 1; if(arr[mid] < x) lo = mid+1; else hi = mid; }
+  return lo;
+}
+
+async function maybeYield(state, label, statusCb){
+  if(performance.now() - state.t > 150){
+    if(statusCb && label) statusCb(label());
+    await sleep(0);
+    checkCancel();
+    state.t = performance.now();
+  }
+}
+
+async function buildCompactGraph(records, settings, statusCb){
+  const ys = { t: performance.now() };
+  const excludedCodes = new Set((settings.excludedTypes || []).map(v => HW_INDEX.get(v)).filter(Boolean));
+  const sacMaxIdx = settings.sacScaleMax ? SAC_SCALE_ORDER.indexOf(settings.sacScaleMax) : -1;
+  const codePrimary = HW_INDEX.get('primary'), codePrimaryLink = HW_INDEX.get('primary_link');
+  const motorwayCodes = new Set(['motorway','motorway_link','trunk','trunk_link'].map(v => HW_INDEX.get(v)));
+
+  // --- a) Wegauswahl (Filter lokal), Deduplizierung über Kachelgrenzen per Way-ID ---
+  const hikingWayIds = new Set();
+  for(const rec of records){ if(rec) for(const id of rec.hikingIds) hikingWayIds.add(id); }
+  const seen = new Set();
+  const selRec = new GrowArray(Int32Array, 1<<16), selWay = new GrowArray(Int32Array, 1<<16);
+  let R = 0, excludedBySac = 0, minLat7 = Infinity, maxLat7 = -Infinity, minLon7 = Infinity, maxLon7 = -Infinity;
+  for(let ri=0; ri<records.length; ri++){
+    const rec = records[ri];
+    if(!rec) continue;
+    for(let w=0; w<rec.W; w++){
+      const id = rec.wayIds[w];
+      if(id >= 0){ if(seen.has(id)) continue; seen.add(id); }
+      const len = rec.nodeOff[w+1] - rec.nodeOff[w];
+      if(len < 2) continue;
+      const f = rec.flags[w];
+      const incl = ((f & F_HW) && !excludedCodes.has(rec.hw[w])) ||
+                   (settings.ferries && (f & F_FERRY)) || (settings.aerialways && (f & F_AERIAL));
+      if(!incl) continue;
+      if(sacMaxIdx >= 0 && rec.sac[w] > 0 && (rec.sac[w]-1) > sacMaxIdx){ excludedBySac++; continue; }
+      selRec.push(ri); selWay.push(w);
+      R += len;
+      for(let k=rec.nodeOff[w]; k<rec.nodeOff[w+1]; k++){
+        const la = rec.lat[k], lo = rec.lon[k];
+        if(la < minLat7) minLat7 = la; if(la > maxLat7) maxLat7 = la;
+        if(lo < minLon7) minLon7 = lo; if(lo > maxLon7) maxLon7 = lo;
+      }
+    }
+    await maybeYield(ys, () => `Wähle Wege aus: Kachel ${ri+1}/${records.length} …`, statusCb);
+  }
+  seen.clear();
+  const SR = selRec.final(), SW = selWay.final();
+  const WS = SR.length;
+  if(WS === 0) return null;
+
+  // Knoten-Identität: Koordinate gerundet auf 1e-6 Grad (wie Version 1), als eine Zahl kodiert.
+  const minLat6 = Math.floor(minLat7/10) - 1, minLon6 = Math.floor(minLon7/10) - 1;
+  const spanLon6 = Math.ceil(maxLon7/10) - minLon6 + 2;
+  const spanLat6 = Math.ceil(maxLat7/10) - minLat6 + 2;
+  if(spanLat6 * spanLon6 > 9e15) throw new Error('Gebiet zu groß für die Knotenkodierung.');
+  const keyOf = (la7, lo7) => (Math.round(la7/10) - minLat6) * spanLon6 + (Math.round(lo7/10) - minLon6);
+
+  // --- b) Kreuzungen bestimmen: Koordinaten, die mehrfach vorkommen, plus alle Wegenden ---
+  statusCb(`Bestimme Kreuzungen (${WS} Wege, ${R} Stützpunkte) …`);
+  await sleep(0);
+  let J;
+  {
+    const keys = new Float64Array(R + 2*WS);
+    let r = 0;
+    for(let s=0; s<WS; s++){
+      const rec = records[SR[s]], w = SW[s];
+      const a = rec.nodeOff[w], b = rec.nodeOff[w+1];
+      for(let k=a; k<b; k++) keys[r++] = keyOf(rec.lat[k], rec.lon[k]);
+      // Wegenden doppelt eintragen -> zählen automatisch als "mehrfach"
+      keys[r++] = keyOf(rec.lat[a], rec.lon[a]);
+      keys[r++] = keyOf(rec.lat[b-1], rec.lon[b-1]);
+    }
+    keys.sort();
+    const jl = new GrowArray(Float64Array, R >> 3);
+    for(let k=1; k<keys.length; k++){
+      if(keys[k] === keys[k-1] && (jl.n === 0 || jl.a[jl.n-1] !== keys[k])) jl.push(keys[k]);
+    }
+    J = jl.final();
+  }
+  await maybeYield(ys, null, statusCb);
+  const NJ = J.length;
+
+  // --- c) Geometrie übernehmen und in Ketten (Kreuzung -> Kreuzung) zerlegen ---
+  statusCb(`Fasse Wegstücke zusammen (${NJ} Kreuzungen/Wegenden) …`);
+  const gLat = new Int32Array(R), gLon = new Int32Array(R);
+  const wayGeoStart = new Uint32Array(WS + 1);
+  const nodeLat7 = new Int32Array(NJ), nodeLon7 = new Int32Array(NJ), nodeSet = new Uint8Array(NJ);
+  const eU = new GrowArray(Int32Array, NJ*1.6), eV = new GrowArray(Int32Array, NJ*1.6);
+  const eLen = new GrowArray(Float64Array, NJ*1.6), eCost = new GrowArray(Float64Array, NJ*1.6);
+  const eGeoA = new GrowArray(Int32Array, NJ*1.6), eGeoB = new GrowArray(Int32Array, NJ*1.6);
+  const ePen = new GrowArray(Float64Array, NJ*1.6), eCls = new GrowArray(Uint8Array, NJ*1.6);
+  let g = 0;
+  const hav7 = (a1, o1, a2, o2) => haversine(a1/1e7, o1/1e7, a2/1e7, o2/1e7);
+  for(let s=0; s<WS; s++){
+    const rec = records[SR[s]], w = SW[s];
+    const f = rec.flags[w], code = rec.hw[w];
+    let penalty = 1;
+    if((f & F_HW) && (code === codePrimary || code === codePrimaryLink)) penalty *= settings.primaryPenalty;
+    if(f & F_PAVED) penalty *= settings.surfacePenalty;
+    if(f & F_BADVIS) penalty *= settings.visibilityPenalty;
+    if(f & F_BADSMOOTH) penalty *= settings.smoothnessPenalty;
+    if(settings.minWidth > 0){ const wNum = rec.width[w]; if(isFinite(wNum) && wNum < settings.minWidth) penalty *= settings.widthPenalty; }
+    if(rec.wayIds[w] >= 0 && hikingWayIds.has(rec.wayIds[w])) penalty *= settings.hikingBonus;
+    let cls = CLS_NORMAL;
+    if(f & F_HW){
+      if(code === codePrimary || code === codePrimaryLink) cls = CLS_PRIMARY;
+      else if(motorwayCodes.has(code)) cls = CLS_MOTORWAY;
+    } else if(f & F_FERRY) cls = CLS_FERRY;
+    else if(f & F_AERIAL) cls = CLS_AERIAL;
+
+    const a = rec.nodeOff[w], b = rec.nodeOff[w+1];
+    wayGeoStart[s] = g;
+    const g0 = g;
+    for(let k=a; k<b; k++){ gLat[g] = rec.lat[k]; gLon[g] = rec.lon[k]; g++; }
+    let startG = g0;
+    let startJ = lowerBound(J, keyOf(gLat[g0], gLon[g0]));
+    if(!nodeSet[startJ]){ nodeSet[startJ] = 1; nodeLat7[startJ] = gLat[g0]; nodeLon7[startJ] = gLon[g0]; }
+    let acc = 0;
+    for(let k=g0+1; k<g; k++){
+      const d = hav7(gLat[k-1], gLon[k-1], gLat[k], gLon[k]);
+      if(d > 0) acc += d;
+      const key = keyOf(gLat[k], gLon[k]);
+      const jk = lowerBound(J, key);
+      if(jk < NJ && J[jk] === key){
+        if(!nodeSet[jk]){ nodeSet[jk] = 1; nodeLat7[jk] = gLat[k]; nodeLon7[jk] = gLon[k]; }
+        if(!(startJ === jk && acc === 0)){
+          eU.push(startJ); eV.push(jk); eLen.push(acc); eCost.push(acc*penalty);
+          eGeoA.push(startG); eGeoB.push(k); ePen.push(penalty); eCls.push(cls);
+        }
+        startG = k; startJ = jk; acc = 0;
+      }
+    }
+    if((s & 1023) === 0) await maybeYield(ys, () => `Fasse Wegstücke zusammen: Weg ${s+1}/${WS} …`, statusCb);
+  }
+  wayGeoStart[WS] = g;
+
+  return {
+    NJ, nodeLat7, nodeLon7, gLat, gLon, wayGeoStart, wayCount: WS, excludedBySac, totalPoints: R,
+    eU, eV, eLen, eCost, eGeoA, eGeoB, ePen, eCls, // noch wachsend (für Anbindung der Wegpunkte)
+    extraGeom: [] // Geometrie zusätzlicher Kanten (Teilstücke an Lotpunkten, Anschlusswege)
+  };
+}
+
+// ---------- 5. Anbindung der Wegpunkte ----------
+
+// Lotfußpunkt eines Punktes auf ein Liniensegment (lokale ebene Näherung, für die kurzen
+// Distanzen hier ausreichend genau). t=0..1 gibt die Position zwischen a und b an.
+function projectPointOnSegment(lat, lon, aLat, aLon, bLat, bLon){
+  const cosLat = Math.cos(lat*Math.PI/180);
+  const toXY = (la, lo) => [(lo-lon)*cosLat*111.320, (la-lat)*111.0];
+  const [ax,ay] = toXY(aLat, aLon);
+  const [bx,by] = toXY(bLat, bLon);
+  const dx = bx-ax, dy = by-ay;
+  const len2 = dx*dx + dy*dy;
+  let t = len2 > 0 ? (-ax*dx - ay*dy)/len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const fx = ax + t*dx, fy = ay + t*dy;
+  const planarDist = Math.sqrt(fx*fx + fy*fy);
+  const fLat = lat + fy/111.0;
+  const fLon = lon + fx/(cosLat*111.320);
+  return { t, planarDist, lat: fLat, lon: fLon };
+}
+
+// Sucht für jeden Wegpunkt das nächstgelegene Wegsegment (rechtwinklige Anbindung).
+// Rasterindex nur in der Umgebung der Wegpunkte (spart Speicher); jedes Segment wird in alle Zellen
+// seines umschließenden Rechtecks einsortiert. Ringsuche mit sicherem Abbruchkriterium; findet sich
+// im Umkreis nichts, wird das gesamte Netz durchsucht.
+async function snapWaypoints(G, pts, statusCb){
+  const cellKm = 0.5, RING = 6;
+  const refLat = pts.reduce((s,p) => s+p.lat, 0) / pts.length;
+  const cellDegLat = cellKm/111.0;
+  const cellDegLon = cellKm/(111.320*Math.cos(refLat*Math.PI/180));
+  const KEYM = 4194304; // 2^22 > Anzahl Längen-Zellen weltweit
+  const cellKey = (r, c) => r*KEYM + (c + 2097152);
+  const grid = new Map();
+  for(const p of pts){
+    const r0 = Math.floor(p.lat/cellDegLat), c0 = Math.floor(p.lon/cellDegLon);
+    for(let dr=-RING; dr<=RING; dr++) for(let dc=-RING; dc<=RING; dc++){
+      const k = cellKey(r0+dr, c0+dc);
+      if(!grid.has(k)) grid.set(k, []);
+    }
+  }
+  const E = G.eU.n, gLat = G.gLat, gLon = G.gLon;
+  const eGeoA = G.eGeoA.a, eGeoB = G.eGeoB.a;
+  const ys = { t: performance.now() };
+  for(let e=0; e<E; e++){
+    for(let s=eGeoA[e]; s<eGeoB[e]; s++){
+      const la1 = gLat[s]/1e7, lo1 = gLon[s]/1e7, la2 = gLat[s+1]/1e7, lo2 = gLon[s+1]/1e7;
+      const r1 = Math.floor(Math.min(la1,la2)/cellDegLat), r2 = Math.floor(Math.max(la1,la2)/cellDegLat);
+      const c1 = Math.floor(Math.min(lo1,lo2)/cellDegLon), c2 = Math.floor(Math.max(lo1,lo2)/cellDegLon);
+      if((r2-r1+1)*(c2-c1+1) > 10000) continue; // extrem lange Segmente (z. B. Fähren) nur in der Komplettsuche
+      for(let r=r1; r<=r2; r++) for(let c=c1; c<=c2; c++){
+        const bucket = grid.get(cellKey(r, c));
+        if(bucket){ bucket.push(s, e); }
+      }
+    }
+    if((e & 16383) === 0) await maybeYield(ys, () => `Baue Suchindex für die Wegpunkt-Anbindung: ${Math.round(100*e/E)} % …`, statusCb);
+  }
+
+  function bruteForce(p){
+    let best = null, bestD = Infinity, bestS = -1, bestE = -1;
+    for(let e=0; e<E; e++){
+      for(let s=eGeoA[e]; s<eGeoB[e]; s++){
+        const pr = projectPointOnSegment(p.lat, p.lon, gLat[s]/1e7, gLon[s]/1e7, gLat[s+1]/1e7, gLon[s+1]/1e7);
+        if(pr.planarDist < bestD){ bestD = pr.planarDist; best = pr; bestS = s; bestE = e; }
+      }
+    }
+    return best ? { proj: best, seg: bestS, edge: bestE } : null;
+  }
+
+  const snaps = [];
+  let bruteCount = 0;
+  for(let i=0; i<pts.length; i++){
+    const p = pts[i];
+    const r0 = Math.floor(p.lat/cellDegLat), c0 = Math.floor(p.lon/cellDegLon);
+    // kleinste Zellkante in km am Ort des Punktes (Längengrad-Zellen sind je nach Breite etwas schmaler)
+    const cellKmHere = Math.min(cellKm, cellDegLon*111.320*Math.cos(p.lat*Math.PI/180));
+    let best = null, bestD = Infinity, bestS = -1, bestE = -1, safe = false;
+    for(let radius=0; radius<=RING; radius++){
+      for(let dr=-radius; dr<=radius; dr++){
+        for(let dc=-radius; dc<=radius; dc++){
+          if(Math.max(Math.abs(dr),Math.abs(dc)) !== radius) continue;
+          const bucket = grid.get(cellKey(r0+dr, c0+dc));
+          if(!bucket) continue;
+          for(let q=0; q<bucket.length; q+=2){
+            const s = bucket[q];
+            const pr = projectPointOnSegment(p.lat, p.lon, gLat[s]/1e7, gLon[s]/1e7, gLat[s+1]/1e7, gLon[s+1]/1e7);
+            if(pr.planarDist < bestD){ bestD = pr.planarDist; best = pr; bestS = s; bestE = bucket[q+1]; }
+          }
+        }
+      }
+      if(best !== null && radius * cellKmHere * 0.999 >= bestD){ safe = true; break; }
+    }
+    let res = safe ? { proj: best, seg: bestS, edge: bestE } : null;
+    if(!safe){ bruteCount++; res = bruteForce(p); }
+    if(res){
+      res.dist = haversine(p.lat, p.lon, res.proj.lat, res.proj.lon); // echte Distanz zum Lotpunkt
+    }
+    snaps.push(res);
+    if((i & 15) === 0) await maybeYield(ys, () => `Binde Wegpunkte an das Wegenetz an: ${i+1}/${pts.length} …`, statusCb);
+  }
+  grid.clear();
+  return { snaps, bruteCount };
+}
+
+// Fügt Lotpunkt- und Wegpunkt-Knoten ein; trennt jede betroffene Kette an ihren Lotpunkten auf.
+// Knotennummern: 0..NJ-1 Kreuzungen, NJ+i Lotpunkt von Wegpunkt i, NJ+n+i Wegpunkt i.
+function insertWaypoints(G, pts, snaps){
+  const n = pts.length, NJ = G.NJ;
+  const N = NJ + 2*n;
+  const nodeLat = new Float64Array(N), nodeLon = new Float64Array(N);
+  for(let k=0;k<NJ;k++){ nodeLat[k] = G.nodeLat7[k]/1e7; nodeLon[k] = G.nodeLon7[k]/1e7; }
+  const projNode = i => NJ + i, wptNode = i => NJ + n + i;
+  for(let i=0;i<n;i++){
+    nodeLat[wptNode(i)] = pts[i].lat; nodeLon[wptNode(i)] = pts[i].lon;
+    if(snaps[i]){ nodeLat[projNode(i)] = snaps[i].proj.lat; nodeLon[projNode(i)] = snaps[i].proj.lon; }
+  }
+  const gLat = G.gLat, gLon = G.gLon;
+  const byEdge = new Map();
+  snaps.forEach((s, i) => { if(s){ if(!byEdge.has(s.edge)) byEdge.set(s.edge, []); byEdge.get(s.edge).push(i); } });
+  const baseEdgeCount = G.eU.n;
+  const disabled = new Set();
+  function addExtraEdge(u, v, len, cost, pen, geom, cls){
+    G.eU.push(u); G.eV.push(v); G.eLen.push(len); G.eCost.push(cost); G.ePen.push(pen); G.eCls.push(cls || 0);
+    G.extraGeom.push(geom);
+    G.eGeoA.push(-G.extraGeom.length); G.eGeoB.push(-1);
+  }
+  for(const [e, list] of byEdge){
+    const ga = G.eGeoA.a[e], gb = G.eGeoB.a[e], pen = G.ePen.a[e], cls = G.eCls.a[e];
+    // Position jedes Lotpunktes entlang der Kette (km ab Kettenanfang)
+    const cum = [0];
+    for(let s=ga; s<gb; s++){
+      const d = haversine(gLat[s]/1e7, gLon[s]/1e7, gLat[s+1]/1e7, gLon[s+1]/1e7);
+      cum.push(cum[cum.length-1] + (d > 0 ? d : 0));
+    }
+    const items = list.map(i => {
+      const s = snaps[i].seg, t = snaps[i].proj.t;
+      const segLen = cum[s-ga+1] - cum[s-ga];
+      return { i, s, t, pos: cum[s-ga] + segLen*t };
+    }).sort((x,y) => (x.s - y.s) || (x.t - y.t));
+    const chainLen = G.eLen.a[e];
+    disabled.add(e);
+    // Teilstücke: Kettenanfang -> Lot1 -> Lot2 -> ... -> Kettenende
+    let prevNode = G.eU.a[e], prevPos = 0, prevS = ga, prevT = 0, prevIsProj = false;
+    const coordOfG = s => [gLat[s]/1e7, gLon[s]/1e7];
+    const emit = (toNode, toPos, toS, toT, toIsProj, toCoord) => {
+      const geom = [];
+      geom.push(prevIsProj ? [nodeLat[prevNode], nodeLon[prevNode]] : [nodeLat[prevNode], nodeLon[prevNode]]);
+      // Stützpunkte strikt zwischen den beiden Positionen
+      const firstVertex = prevIsProj ? prevS + 1 : ga + 1;
+      const lastVertex = toS; // Stützpunkt-Index toS liegt vor dem Lotpunkt auf Segment toS (bzw. ist das Kettenende)
+      for(let s=firstVertex; s<=lastVertex && s<gb; s++) geom.push(coordOfG(s));
+      geom.push(toCoord);
+      const len = Math.max(0, toPos - prevPos);
+      addExtraEdge(prevNode, toNode, len, len*pen, pen, geom, cls);
+    };
+    for(const it of items){
+      const pn = projNode(it.i);
+      emit(pn, it.pos, it.s, it.t, true, [nodeLat[pn], nodeLon[pn]]);
+      prevNode = pn; prevPos = it.pos; prevS = it.s; prevT = it.t; prevIsProj = true;
+    }
+    // letztes Stück bis zum Kettenende
+    {
+      const vEnd = G.eV.a[e];
+      const geom = [[nodeLat[prevNode], nodeLon[prevNode]]];
+      for(let s=prevS+1; s<gb; s++) geom.push(coordOfG(s));
+      geom.push([nodeLat[vEnd], nodeLon[vEnd]]);
+      const len = Math.max(0, chainLen - prevPos);
+      addExtraEdge(prevNode, vEnd, len, len*pen, pen, geom, cls);
+    }
+  }
+  // Anschlusswege Wegpunkt <-> Lotpunkt: reine Luftlinie, nie gestraft
+  const connectorDistances = new Array(n).fill(0);
+  for(let i=0;i<n;i++){
+    if(!snaps[i]) continue;
+    const d = snaps[i].dist;
+    addExtraEdge(wptNode(i), projNode(i), d, d, 1, [[pts[i].lat, pts[i].lon], [snaps[i].proj.lat, snaps[i].proj.lon]], CLS_NORMAL);
+    connectorDistances[i] = d;
+  }
+  G.N = N; G.nodeLat = nodeLat; G.nodeLon = nodeLon; G.n = n;
+  G.wptNode = wptNode; G.projNode = projNode;
+  G.disabled = disabled; G.baseEdgeCount = baseEdgeCount;
+  return connectorDistances;
+}
+
+// Endgültige Kantenarrays, Ausdünnung (Sackgassen-Äste und Netzteile ohne Wegpunkt) und CSR-Adjazenz.
+async function finalizeGraph(G, statusCb){
+  const E = G.eU.n;
+  const eU = G.eU.final(), eV = G.eV.final(), eLen = G.eLen.final(), eCost = G.eCost.final();
+  const eGeoA = G.eGeoA.final(), eGeoB = G.eGeoB.final(), eCls = G.eCls.final();
+  G.eCls = eCls;
+  G.eU = eU; G.eV = eV; G.eLen = eLen; G.eCost = eCost; G.eGeoA = eGeoA; G.eGeoB = eGeoB; G.ePen = null;
+  const alive = new Uint8Array(E).fill(1);
+  for(const e of G.disabled) alive[e] = 0;
+  const N = G.N;
+  const isProtected = v => v >= G.NJ; // Lot- und Wegpunkt-Knoten
+
+  function buildCSR(){
+    const deg = new Uint32Array(N + 1);
+    for(let e=0;e<E;e++) if(alive[e]){ deg[eU[e]]++; deg[eV[e]]++; }
+    const start = new Uint32Array(N + 1);
+    for(let v=0; v<N; v++) start[v+1] = start[v] + deg[v];
+    const fill = start.slice(0, N);
+    const to = new Int32Array(start[N]), edge = new Int32Array(start[N]);
+    for(let e=0;e<E;e++){
+      if(!alive[e]) continue;
+      const u = eU[e], v = eV[e];
+      to[fill[u]] = v; edge[fill[u]++] = e;
+      to[fill[v]] = u; edge[fill[v]++] = e;
+    }
+    return { start, to, edge, deg };
+  }
+  statusCb('Dünne Wegenetz aus (Sackgassen ohne Wegpunkt) …');
+  await sleep(0);
+  let csr = buildCSR();
+  let totalEdgesBefore = 0;
+  for(let e=0;e<E;e++) totalEdgesBefore += alive[e];
+  // a) Sackgassen-Äste ohne Wegpunkt iterativ entfernen
+  const deg = new Int32Array(N);
+  for(let v=0; v<N; v++) deg[v] = csr.start[v+1] - csr.start[v];
+  const stack = [];
+  for(let v=0; v<N; v++) if(deg[v] === 1 && !isProtected(v)) stack.push(v);
+  let prunedLeaves = 0;
+  while(stack.length){
+    const u = stack.pop();
+    if(deg[u] !== 1) continue;
+    for(let k=csr.start[u]; k<csr.start[u+1]; k++){
+      const e = csr.edge[k];
+      if(!alive[e]) continue;
+      alive[e] = 0; prunedLeaves++;
+      deg[u]--;
+      const v = csr.to[k];
+      if(v !== u){ deg[v]--; if(deg[v] === 1 && !isProtected(v)) stack.push(v); }
+      break;
+    }
+  }
+  // b) Netzteile, die keinen Wegpunkt enthalten, entfernen
+  const reach = new Uint8Array(N);
+  const queue = new Int32Array(N);
+  let qh = 0, qt = 0;
+  for(let i=0;i<G.n;i++){ const w = G.wptNode(i); if(!reach[w]){ reach[w] = 1; queue[qt++] = w; } }
+  while(qh < qt){
+    const u = queue[qh++];
+    for(let k=csr.start[u]; k<csr.start[u+1]; k++){
+      const e = csr.edge[k];
+      if(!alive[e]) continue;
+      const v = csr.to[k];
+      if(!reach[v]){ reach[v] = 1; queue[qt++] = v; }
+    }
+  }
+  let prunedComp = 0;
+  for(let e=0;e<E;e++) if(alive[e] && !reach[eU[e]]){ alive[e] = 0; prunedComp++; }
+  csr = buildCSR();
+  G.adjStart = csr.start; G.adjTo = csr.to; G.adjEdge = csr.edge;
+  G.alive = alive;
+  G.stats = { edgesBefore: totalEdgesBefore, prunedLeaves, prunedComp, edgesAfter: totalEdgesBefore - prunedLeaves - prunedComp,
+              nodesReached: qt };
+  // nicht mehr benötigt
+  G.nodeLat7 = null; G.nodeLon7 = null; G.disabled = null;
+  return G;
+}
+
+// ---------- 6. Dijkstra auf Zahlen-Arrays ----------
+
+class FastDijkstra{
+  constructor(G){
+    const N = G.N;
+    this.G = G;
+    this.dist = new Float64Array(N);   // Suchkosten (mit Straf-Faktoren)
+    this.real = new Float64Array(N);   // echte, ungestrafte Distanz entlang desselben Pfades
+    this.prevE = new Int32Array(N);
+    this.seen = new Uint32Array(N);    // == stamp: dist/real gültig
+    this.done = new Uint32Array(N);    // == stamp: endgültig
+    this.tmark = new Uint32Array(N);   // == stamp: Ziel
+    this.pos = new Int32Array(N);      // Position im Heap
+    this.heap = new Int32Array(N);     // Heap: Knoten
+    this.hkey = new Float64Array(N);   // Heap: Schlüssel (parallel, spart Indirektion)
+    this.stamp = 0;
+  }
+  // Läuft von src, bis alle Ziele erreicht sind (oder das Netz erschöpft ist).
+  run(src, targets){
+    this.stamp++;
+    if(this.stamp >= 0xFFFFFFF0){ this.seen.fill(0); this.done.fill(0); this.tmark.fill(0); this.stamp = 1; }
+    const st = this.stamp, G = this.G;
+    const seen = this.seen, done = this.done, tmark = this.tmark, dist = this.dist, real = this.real, prevE = this.prevE;
+    const heap = this.heap, hkey = this.hkey, pos = this.pos;
+    const adjStart = G.adjStart, adjTo = G.adjTo, adjEdge = G.adjEdge, eCost = G.eCost, eLen = G.eLen;
+    let remaining = 0;
+    for(const t of targets){ if(t !== src && tmark[t] !== st){ tmark[t] = st; remaining++; } }
+    seen[src] = st; dist[src] = 0; real[src] = 0; prevE[src] = -1;
+    if(remaining === 0){ done[src] = st; return; }
+    let size = 1;
+    heap[0] = src; hkey[0] = 0; pos[src] = 0;
+    while(size > 0){
+      const u = heap[0];
+      // Wurzel entfernen: letztes Element nach unten sieben
+      size--;
+      if(size > 0){
+        const v = heap[size], kv = hkey[size];
+        let i = 0;
+        while(true){
+          let c = 2*i+1;
+          if(c >= size) break;
+          if(c+1 < size && hkey[c+1] < hkey[c]) c++;
+          if(hkey[c] >= kv) break;
+          heap[i] = heap[c]; hkey[i] = hkey[c]; pos[heap[i]] = i; i = c;
+        }
+        heap[i] = v; hkey[i] = kv; pos[v] = i;
+      }
+      done[u] = st;
+      if(tmark[u] === st){ if(--remaining === 0) break; }
+      const du = dist[u], ru = real[u];
+      for(let k=adjStart[u], kEnd=adjStart[u+1]; k<kEnd; k++){
+        const v = adjTo[k];
+        if(done[v] === st) continue;
+        const e = adjEdge[k];
+        const nd = du + eCost[e];
+        let i;
+        if(seen[v] !== st){
+          seen[v] = st; i = size++;
+        } else if(nd < dist[v]){
+          i = pos[v];
+        } else continue;
+        dist[v] = nd; real[v] = ru + eLen[e]; prevE[v] = e;
+        // nach oben sieben
+        while(i > 0){
+          const p = (i-1) >> 1;
+          if(hkey[p] <= nd) break;
+          heap[i] = heap[p]; hkey[i] = hkey[p]; pos[heap[i]] = i; i = p;
+        }
+        heap[i] = v; hkey[i] = nd; pos[v] = i;
+      }
+    }
+  }
+  reached(t){ return this.done[t] === this.stamp; }
+  realDist(t){ return this.done[t] === this.stamp ? this.real[t] : undefined; }
+  // Kantenfolge src -> t des zuletzt gerechneten Laufs; null, wenn t nicht erreicht wurde.
+  pathEdges(src, t){
+    if(!this.reached(t)) return null;
+    const G = this.G, out = [];
+    let v = t;
+    while(v !== src){
+      const e = this.prevE[v];
+      if(e < 0) return null;
+      out.push(e);
+      v = (G.eU[e] === v) ? G.eV[e] : G.eU[e];
+    }
+    out.reverse();
+    return out;
+  }
+}
+
+let dijkstraEngine = null;
+function getEngine(G){
+  if(!dijkstraEngine || dijkstraEngine.G !== G) dijkstraEngine = new FastDijkstra(G);
+  return dijkstraEngine;
+}
+
+// Koordinatenfolge einer Kante, beginnend am Knoten fromNode.
+function edgeCoords(G, e, fromNode){
+  const ga = G.eGeoA[e];
+  let pts;
+  if(ga >= 0){
+    const gb = G.eGeoB[e];
+    pts = [[G.nodeLat[G.eU[e]], G.nodeLon[G.eU[e]]]];
+    for(let s=ga+1; s<gb; s++) pts.push([G.gLat[s]/1e7, G.gLon[s]/1e7]);
+    pts.push([G.nodeLat[G.eV[e]], G.nodeLon[G.eV[e]]]);
+  } else {
+    pts = G.extraGeom[-1-ga].map(c => [c[0], c[1]]);
+  }
+  if(fromNode !== G.eU[e]) pts.reverse();
+  return pts;
+}
+
+// Kürzester Pfad zwischen zwei Wegpunkten (Indizes in 'points'): Kantenfolge + Knotenfolge.
+function waypointPath(G, a, b){
+  const src = G.wptNode(a), dst = G.wptNode(b);
+  if(src === dst) return { edges: [], nodes: [src] };
+  const eng = getEngine(G);
+  eng.run(src, [dst]);
+  const edges = eng.pathEdges(src, dst);
+  if(!edges) return null;
+  const nodes = [src];
+  let cur = src;
+  for(const e of edges){ cur = (G.eU[e] === cur) ? G.eV[e] : G.eU[e]; nodes.push(cur); }
+  return { edges, nodes, real: eng.realDist(dst) };
+}
+
+// ---------- Douglas-Peucker / Teilstrecken (unverändert) ----------
+
+// Douglas-Peucker-Liniensimplifizierung: reduziert eine dichte Punktfolge (z. B. den echten
+// Wegverlauf mit zehntausenden Punkten) auf die geometrisch relevanten Stützpunkte, sodass eine
+// darauf basierende Route (in Basecamp o. ä. neu geroutet) dem echten Weg eng genug folgt, statt
+// zwischen weit auseinanderliegenden Punkten frei zu "raten". epsilonM = Toleranz in Metern.
+function simplifyPolylineDP(points, epsilonM){
+  const n = points.length;
+  if(n < 3) return points.slice();
+  const midLat = points[Math.floor(n/2)][0];
+  const cosLat = Math.cos(midLat * Math.PI/180);
+  const toXY = p => [p[1] * cosLat * 111320, p[0] * 111000]; // grobe, aber fuer diesen Zweck ausreichende Meter-Projektion
+  const XY = points.map(toXY);
+
+  function perpDist(p, a, b){
+    const dx = b[0]-a[0], dy = b[1]-a[1];
+    const len2 = dx*dx + dy*dy;
+    if(len2 === 0) return Math.hypot(p[0]-a[0], p[1]-a[1]);
+    let t = ((p[0]-a[0])*dx + (p[1]-a[1])*dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p[0]-(a[0]+t*dx), p[1]-(a[1]+t*dy));
+  }
+
+  const keep = new Uint8Array(n);
+  keep[0] = 1; keep[n-1] = 1;
+  const stack = [[0, n-1]];
+  while(stack.length){
+    const [start, end] = stack.pop();
+    if(end <= start+1) continue;
+    let maxDist = -1, maxIdx = -1;
+    for(let i=start+1;i<end;i++){
+      const d = perpDist(XY[i], XY[start], XY[end]);
+      if(d > maxDist){ maxDist = d; maxIdx = i; }
+    }
+    if(maxDist > epsilonM){
+      keep[maxIdx] = 1;
+      stack.push([start, maxIdx]);
+      stack.push([maxIdx, end]);
+    }
+  }
+  const result = [];
+  for(let i=0;i<n;i++) if(keep[i]) result.push(points[i]);
+  return result;
+}
+
+// Teilt eine (bereits vereinfachte) Punktfolge in numSections etwa gleich lange Abschnitte
+// (nach echter Distanz, nicht nach Punktanzahl). Angrenzende Abschnitte teilen sich den
+// Übergangspunkt, damit sie nahtlos aneinander anschließen.
+function splitPolylineIntoSections(points, numSections){
+  if(numSections <= 1) return [points];
+  const cum = [0];
+  for(let i=1;i<points.length;i++){
+    cum.push(cum[i-1] + haversine(points[i-1][0], points[i-1][1], points[i][0], points[i][1]));
+  }
+  const total = cum[cum.length-1];
+  const sections = [];
+  let startIdx = 0;
+  for(let s=1; s<=numSections; s++){
+    const targetDist = total * s / numSections;
+    let endIdx = points.length - 1;
+    if(s < numSections){
+      endIdx = startIdx;
+      while(endIdx < points.length-1 && cum[endIdx] < targetDist) endIdx++;
+    }
+    sections.push(points.slice(startIdx, endIdx+1));
+    startIdx = endIdx; // naechster Abschnitt beginnt am selben Punkt (nahtloser Anschluss)
+  }
+  return sections;
+}
+
+// ---------- Auswertungen auf der fertigen Tour ----------
+
+// Baut die tatsächliche Weg-Polylinie (Koordinatenliste) für die finale Tour-Reihenfolge.
+// Nicht verbundene Paare (Fallback) werden als gerade Strecke ergänzt.
+async function buildRealPolylineForTour(order, closed, statusCb){
+  if(!lastNetworkGraph || lastNetworkGraphForPoints !== points) return null;
+  const G = lastNetworkGraph;
+  const seq = order.slice();
+  const legs = [];
+  for(let i=0;i<seq.length-1;i++) legs.push([seq[i], seq[i+1]]);
+  if(closed) legs.push([seq[seq.length-1], seq[0]]);
+
+  const polyline = [];
+  let fallbackEdges = 0;
+  let lastYield = performance.now();
+  for(let li=0; li<legs.length; li++){
+    const [a, b] = legs[li];
+    const path = waypointPath(G, a, b);
+    let segCoords = [];
+    if(path){
+      let cur = G.wptNode(a);
+      segCoords.push([G.nodeLat[cur], G.nodeLon[cur]]);
+      for(const e of path.edges){
+        const c = edgeCoords(G, e, cur);
+        for(let k=1;k<c.length;k++) segCoords.push(c[k]);
+        cur = (G.eU[e] === cur) ? G.eV[e] : G.eU[e];
+      }
+    } else {
+      fallbackEdges++;
+      segCoords = [[points[a].lat, points[a].lon], [points[b].lat, points[b].lon]];
+    }
+    if(polyline.length > 0) segCoords = segCoords.slice(1); // Duplikat des gemeinsamen Punktes vermeiden
+    for(const c of segCoords){
+      const last = polyline[polyline.length-1];
+      if(last && last[0]===c[0] && last[1]===c[1]) continue; // exakte Dopplung überspringen
+      polyline.push(c);
+    }
+    if(performance.now() - lastYield > 100){
+      if(statusCb) statusCb(`Berechne echten Wegverlauf für Export: Abschnitt ${li+1}/${legs.length} …`);
+      await sleep(0);
+      lastYield = performance.now();
+      checkCancel();
+    }
+  }
+  return { polyline, fallbackEdges, totalEdges: legs.length };
+}
+
+// Analysiert die fertige Tour direkt anhand der echten Wegpfade: Für jeden Tour-Abschnitt wird der
+// reale Pfad nachvollzogen und gezählt, wie oft jeder Wegenetz-Abschnitt (Kante zwischen zwei
+// Kreuzungen bzw. Lotpunkten) insgesamt benutzt wird. Mehrfach durchlaufene Abschnitte (typisch:
+// Sackgassen, hin und zurück auf demselben Weg) ergeben die "doppelt gelaufene Strecke".
+async function analyzeBacktrackDistance(order, closed, statusCb){
+  if(!lastNetworkGraph || lastNetworkGraphForPoints !== points) return null;
+  const G = lastNetworkGraph;
+  const seq = order.slice();
+  const legs = [];
+  for(let i=0;i<seq.length-1;i++) legs.push([seq[i], seq[i+1]]);
+  if(closed) legs.push([seq[seq.length-1], seq[0]]);
+
+  const usage = new Map(); // Kanten-ID -> Anzahl Durchläufe
+  let fallbackLegs = 0;
+  let lastYield = performance.now();
+  for(let li=0; li<legs.length; li++){
+    const [a, b] = legs[li];
+    const path = waypointPath(G, a, b);
+    if(!path){ fallbackLegs++; continue; }
+    for(const e of path.edges) usage.set(e, (usage.get(e) || 0) + 1);
+    if(performance.now() - lastYield > 100){
+      if(statusCb) statusCb(`Analysiere doppelt genutzte Wegabschnitte: Tour-Abschnitt ${li+1}/${legs.length} …`);
+      await sleep(0);
+      lastYield = performance.now();
+      checkCancel();
+    }
+  }
+  let totalBacktrackKm = 0, totalNetworkKm = 0, edgesUsedMultiple = 0, deadEndSingleKm = 0;
+  for(const [e, count] of usage){
+    const len = G.eLen[e];
+    totalNetworkKm += len;
+    if(count > 1){
+      totalBacktrackKm += len * (count - 1);
+      deadEndSingleKm += len; // Hinweg-Anteil: dieser Abschnitt einmal (der nötige Hinweg)
+      edgesUsedMultiple++;
+    }
+  }
+  const pureNetworkKm = totalNetworkKm - deadEndSingleKm;
+  return {
+    totalBacktrackKm, deadEndSingleKm, pureNetworkKm,
+    totalNetworkKm, edgesUsedMultiple,
+    totalEdgesUsed: usage.size, fallbackLegs, totalLegs: legs.length
+  };
+}
+
+// Für jeden Tour-Abschnitt sowohl die Luftlinie als auch (falls ein Wegenetz-Graph vorliegt)
+// die echte Wegdistanz berechnen — für den CSV-Export.
+async function computeSegmentDistances(order, closed, statusCb){
+  const G = (lastNetworkGraph && lastNetworkGraphForPoints === points) ? lastNetworkGraph : null;
+  const seq = order.slice();
+  const results = [];
+  let lastYield = performance.now();
+  for(let i=0;i<seq.length;i++){
+    const isLast = (i === seq.length-1);
+    if(isLast && !closed) break;
+    const a = seq[i], b = seq[(i+1) % seq.length];
+    const beeline = haversine(points[a].lat, points[a].lon, points[b].lat, points[b].lon);
+    let real = null;
+    if(G){
+      const eng = getEngine(G);
+      eng.run(G.wptNode(a), [G.wptNode(b)]);
+      const r = eng.realDist(G.wptNode(b));
+      real = (r === undefined) ? null : r;
+    }
+    results.push({ fromIdx: a, toIdx: b, beeline, real });
+    if(performance.now() - lastYield > 100){
+      if(statusCb) statusCb(`Berechne Entfernungsliste: Abschnitt ${i+1}/${seq.length} …`);
+      await sleep(0);
+      lastYield = performance.now();
+      checkCancel();
+    }
+  }
+  return results;
+}
+
+// ---------- Route für Neuberechnung (Basecamp & Co.) ----------
+//
+// Ziel: möglichst wenige Routenpunkte, die beim Neuberechnen mit "kürzester Strecke" (Bundesstraßen,
+// Autobahnen, Fähren, Seilbahnen gesperrt) exakt den Track ergeben, und die eindeutig einrasten:
+//  - Wegpunkte sind immer Routenpunkte.
+//  - Sonst nur Punkte in der Mitte eines Wegstücks (Kreuzung–Kreuzung), mindestens RECALC_MIN_JUNCTION_M
+//    von beiden Enden entfernt, höchstens einer je Wegstück -> keine Kehrtwenden durch Einrasten.
+//  - Gierige Auswahl: von einem Routenpunkt aus wird der nächste so weit wie möglich nach vorn gelegt,
+//    solange die kürzeste Verbindung (auf dem eigenen Wegenetz, Basecamp-Regeln) genau dem Track folgt.
+//  - Abschnitte auf Bundesstraße/Autobahn/Fähre/Seilbahn kann ein Wander-Profil nicht nachrechnen: sie werden
+//    mit benannten Punkten an Anfang ("... Beginn (Gerade)") und Ende ("... Ende (Wandern)") markiert und
+//    dazwischen dicht (Douglas-Peucker mit der eingestellten Toleranz) belegt.
+
+const RECALC_MIN_JUNCTION_M = 25;
+const RECALC_TIE_MARGIN_KM = 0.001; // Alternativen, die weniger als 1 m länger sind, gelten als Gleichstand (unsicher)
+
+// Dijkstra nach "Basecamp-Regeln": reine Weglänge, Kanten der Klassen 1–4 gesperrt.
+// Fortsetzbar: start() mit Quellen (Knoten + Startkosten), danach settle(ziel) so oft wie nötig.
+class RecalcRouter{
+  constructor(G){
+    const N = G.N;
+    this.G = G;
+    this.dist = new Float64Array(N);
+    this.prevE = new Int32Array(N);
+    this.seen = new Uint32Array(N);
+    this.done = new Uint32Array(N);
+    this.pos = new Int32Array(N);
+    this.heap = new Int32Array(N);
+    this.hkey = new Float64Array(N);
+    this.size = 0;
+    this.stamp = 0;
+  }
+  start(sources){
+    this.stamp++;
+    if(this.stamp >= 0xFFFFFFF0){ this.seen.fill(0); this.done.fill(0); this.stamp = 1; }
+    this.size = 0;
+    for(const s of sources){
+      const v = s.node;
+      if(this.seen[v] === this.stamp && this.dist[v] <= s.cost) continue;
+      if(this.seen[v] !== this.stamp){ this.seen[v] = this.stamp; this._insert(v, s.cost); }
+      else { this.dist[v] = s.cost; this._siftUp(this.pos[v], v, s.cost); }
+      this.prevE[v] = -1;
+    }
+  }
+  _insert(v, key){ const i = this.size++; this.dist[v] = key; this._siftUp(i, v, key); }
+  _siftUp(i, v, key){
+    const heap = this.heap, hkey = this.hkey, pos = this.pos;
+    while(i > 0){
+      const p = (i-1) >> 1;
+      if(hkey[p] <= key) break;
+      heap[i] = heap[p]; hkey[i] = hkey[p]; pos[heap[i]] = i; i = p;
+    }
+    heap[i] = v; hkey[i] = key; pos[v] = i;
+  }
+  _pop(){
+    const heap = this.heap, hkey = this.hkey, pos = this.pos;
+    const u = heap[0];
+    this.size--;
+    const size = this.size;
+    if(size > 0){
+      const v = heap[size], kv = hkey[size];
+      let i = 0;
+      while(true){
+        let c = 2*i+1;
+        if(c >= size) break;
+        if(c+1 < size && hkey[c+1] < hkey[c]) c++;
+        if(hkey[c] >= kv) break;
+        heap[i] = heap[c]; hkey[i] = hkey[c]; pos[heap[i]] = i; i = c;
+      }
+      heap[i] = v; hkey[i] = kv; pos[v] = i;
+    }
+    return u;
+  }
+  // Rechnet weiter, bis 'target' endgültig ist. false = nicht erreichbar.
+  settle(target){
+    const st = this.stamp, G = this.G;
+    if(this.done[target] === st) return true;
+    const seen = this.seen, done = this.done, dist = this.dist, prevE = this.prevE;
+    const adjStart = G.adjStart, adjTo = G.adjTo, adjEdge = G.adjEdge, eLen = G.eLen, eCls = G.eCls;
+    while(this.size > 0){
+      const u = this._pop();
+      done[u] = st;
+      const du = dist[u];
+      for(let k=adjStart[u], kEnd=adjStart[u+1]; k<kEnd; k++){
+        const e = adjEdge[k];
+        if(eCls[e] !== 0) continue;
+        const v = adjTo[k];
+        if(done[v] === st) continue;
+        const nd = du + eLen[e];
+        if(seen[v] !== st){ seen[v] = st; prevE[v] = e; this._insert(v, nd); }
+        else if(nd < dist[v]){ dist[v] = nd; prevE[v] = e; this._siftUp(this.pos[v], v, nd); }
+      }
+      if(u === target) return true;
+    }
+    return false;
+  }
+  d(v){ return this.seen[v] === this.stamp ? this.dist[v] : Infinity; }
+}
+
+// Punkt auf Kante e bei Anteil frac (0..1) der Länge, gerechnet ab Knoten fromNode.
+function pointAlongEdge(G, e, fromNode, frac){
+  const c = edgeCoords(G, e, fromNode);
+  let total = 0;
+  const seg = [];
+  for(let k=1;k<c.length;k++){ const d = haversine(c[k-1][0], c[k-1][1], c[k][0], c[k][1]); seg.push(d); total += d; }
+  let target = total * frac;
+  for(let k=1;k<c.length;k++){
+    if(target <= seg[k-1] || k === c.length-1){
+      const f = seg[k-1] > 0 ? Math.min(1, target/seg[k-1]) : 0;
+      return [c[k-1][0] + (c[k][0]-c[k-1][0])*f, c[k-1][1] + (c[k][1]-c[k-1][1])*f];
+    }
+    target -= seg[k-1];
+  }
+  return c[c.length-1];
+}
+
+async function buildRecalcRoute(order, closed, toleranceM, statusCb){
+  if(!lastNetworkGraph || lastNetworkGraphForPoints !== points) return null;
+  const G = lastNetworkGraph;
+  const router = new RecalcRouter(G);
+  const seq = order.slice();
+  const legs = [];
+  for(let i=0;i<seq.length-1;i++) legs.push([seq[i], seq[i+1]]);
+  if(closed) legs.push([seq[seq.length-1], seq[0]]);
+  const minEdgeKm = 2*RECALC_MIN_JUNCTION_M/1000;
+  const firstWpt = G.NJ + G.n;
+  const isConnector = e => G.eU[e] >= firstWpt || G.eV[e] >= firstWpt; // Luftlinie Wegpunkt <-> Weg
+
+  // Ergebnis: Liste von Routenpunkten {lat, lon, name, sym, km (Position entlang des Tracks), split (als Teilstrecken-Grenze geeignet)}
+  const out = [];
+  let kmBase = 0;
+  const stats = { fallbackLegs: 0, specialRuns: {1:0,2:0,3:0,4:0}, specialKm: {1:0,2:0,3:0,4:0}, forcedPoints: 0, legs: legs.length };
+  const stampPoint = (idx, km) => ({ lat: points[idx].lat, lon: points[idx].lon, name: points[idx].name, sym: 'Flag, Red', km, split: true, kind: 'stamp' });
+  out.push(stampPoint(seq[0], 0));
+  let lastYield = performance.now();
+
+  for(let li=0; li<legs.length; li++){
+    const [a, b] = legs[li];
+    const path = waypointPath(G, a, b);
+    if(!path){
+      stats.fallbackLegs++;
+      kmBase += haversine(points[a].lat, points[a].lon, points[b].lat, points[b].lon);
+      out.push(stampPoint(b, kmBase));
+      continue;
+    }
+    const E = path.edges, V = path.nodes, K = E.length;
+    // Kilometer entlang des Abschnitts an jedem Knoten
+    const cum = new Float64Array(K+1);
+    for(let k=0;k<K;k++) cum[k+1] = cum[k] + G.eLen[E[k]];
+    // Abschnitte gleicher Klasse bilden (0 = normal, sonst Sonderabschnitt, der "Gerade" braucht)
+    let runs = [];
+    for(let k=0;k<K;k++){
+      const c = G.eCls[E[k]];
+      if(runs.length && runs[runs.length-1].cls === c) runs[runs.length-1].q = k+1;
+      else runs.push({ p: k, q: k+1, cls: c });
+    }
+    // Normale Mini-Abschnitte ohne geeignetes Wegstück für einen Routenpunkt (z. B. nur der Anschluss einer
+    // Wegpunkt an eine Bundesstraße) werden dem benachbarten Sonderabschnitt zugeschlagen — ein
+    // Wander-Profil könnte sie nicht sinnvoll nachrechnen.
+    const hasCandidate = r => { for(let k=r.p;k<r.q;k++){ const e = E[k]; if(G.eLen[e] >= minEdgeKm && !isConnector(e)) return true; } return false; };
+    for(let ri=0; ri<runs.length; ri++){
+      const r = runs[ri];
+      if(r.cls !== 0 || hasCandidate(r)) continue;
+      const prev = ri > 0 ? runs[ri-1].cls : 0, next = ri < runs.length-1 ? runs[ri+1].cls : 0;
+      if(prev !== 0) r.cls = prev; else if(next !== 0) r.cls = next;
+    }
+    const merged = [];
+    for(const r of runs){
+      if(merged.length && merged[merged.length-1].cls === r.cls) merged[merged.length-1].q = r.q;
+      else merged.push({ ...r });
+    }
+    runs = merged;
+    const uniq = [0];
+    for(const r of runs) uniq.push(r.q);
+    const runCls = runs.map(r => r.cls);
+
+    for(let fi=0; fi<uniq.length-1; fi++){
+      const p = uniq[fi], q = uniq[fi+1];
+      const cls = runCls[fi];
+      const nodePoint = (k, name, sym, split) => ({ lat: G.nodeLat[V[k]], lon: G.nodeLon[V[k]], name, sym, km: kmBase + cum[k], split, kind: name ? 'marker' : 'node' });
+      if(cls !== 0){
+        // Sonderabschnitt: Beginn-Marker, dichte Punkte, Ende-Marker
+        const label = CLS_LABEL[cls] || 'Sonderweg';
+        stats.specialRuns[cls]++; stats.specialKm[cls] += cum[q] - cum[p];
+        if(p > 0) out.push(nodePoint(p, `${label} Beginn (Gerade)`, 'Flag, Blue', true));
+        else {
+          const prevPt = out[out.length-1];
+          // Folgt direkt auf ein "Ende (Wandern)" an derselben Stelle: Profil bleibt einfach auf "Gerade"
+          if(/ Ende \(Wandern\)$/.test(prevPt.name || '')) prevPt.name = prevPt.name.replace(/ — [^—]* Ende \(Wandern\)$/, ` — weiter Gerade (${label})`);
+          else prevPt.name += ` — ${label} Beginn (Gerade)`;
+          prevPt.kind = 'marker'; prevPt.split = false;
+        }
+        const geom = [];
+        let cur = V[p];
+        geom.push([G.nodeLat[cur], G.nodeLon[cur]]);
+        for(let k=p;k<q;k++){
+          const c = edgeCoords(G, E[k], cur);
+          for(let s=1;s<c.length;s++) geom.push(c[s]);
+          cur = V[k+1];
+        }
+        const simp = simplifyPolylineDP(geom, toleranceM);
+        // Kilometer der Zwischenpunkte näherungsweise über die Geometrie
+        let acc = 0;
+        const gcum = [0];
+        for(let s=1;s<geom.length;s++){ acc += haversine(geom[s-1][0], geom[s-1][1], geom[s][0], geom[s][1]); gcum.push(acc); }
+        const scale = acc > 0 ? (cum[q]-cum[p])/acc : 0;
+        let gi = 0;
+        for(let s=1; s<simp.length-1; s++){
+          while(gi < geom.length && (geom[gi][0] !== simp[s][0] || geom[gi][1] !== simp[s][1])) gi++;
+          out.push({ lat: simp[s][0], lon: simp[s][1], name: null, sym: 'Dot', km: kmBase + cum[p] + (gi < geom.length ? gcum[gi]*scale : 0), split: false, kind: 'special' });
+        }
+        if(q < K) out.push(nodePoint(q, `${label} Ende (Wandern)`, 'Flag, Green', true));
+        else out.push(Object.assign(stampPoint(b, kmBase + cum[K]), { name: points[b].name + ` — ${label} Ende (Wandern)` }));
+        continue;
+      }
+      // Normaler Abschnitt: gierige Minimalauswahl von Kantenmitte-Punkten
+      // Anker: {type:'node', k} oder {type:'mid', k} (Mitte von Kante E[k])
+      let anchor = { type: 'node', k: p };
+      while(true){
+        let sources, checkFrom;
+        if(anchor.type === 'node'){ sources = [{ node: V[anchor.k], cost: 0 }]; checkFrom = anchor.k + 1; }
+        else {
+          const half = G.eLen[E[anchor.k]]/2;
+          sources = [{ node: V[anchor.k+1], cost: half }, { node: V[anchor.k], cost: half }];
+          checkFrom = anchor.k + 2;
+          // Knoten V[k+1] muss Quelle bleiben (nicht über einen anderen Weg günstiger erreicht)
+        }
+        router.start(sources);
+        let lastValid = null, failAt = -1, reachedEnd = false;
+        // Prüfung: Baumpfad bis Knoten V[t] folgt dem Track?
+        let t = checkFrom;
+        let prefixOk = true;
+        if(anchor.type === 'mid'){
+          router.settle(V[anchor.k+1]);
+          if(router.prevE[V[anchor.k+1]] !== -1) prefixOk = false, failAt = anchor.k + 1;
+        }
+        const firstCand = anchor.type === 'node' ? anchor.k : anchor.k + 1;
+        for(let j=firstCand; prefixOk && j<=q; j++){
+          // Präfix bis Knoten V[j] prüfen (Knoten V[j] liegt am Anfang von Kante E[j])
+          while(t <= j){
+            if(!router.settle(V[t]) || router.prevE[V[t]] !== E[t-1]){ prefixOk = false; failAt = t; break; }
+            t++;
+          }
+          if(!prefixOk) break;
+          if(j === q){ reachedEnd = true; break; }
+          // Kandidat: Mitte von E[j]
+          const len = G.eLen[E[j]];
+          if(len >= minEdgeKm && !isConnector(E[j])){
+            router.settle(V[j+1]);
+            const dA = router.d(V[j]), dB = router.d(V[j+1]);
+            if(dA <= dB - RECALC_TIE_MARGIN_KM || router.prevE[V[j+1]] === E[j]) lastValid = j;
+          }
+        }
+        if(reachedEnd) break;
+        let next;
+        if(lastValid !== null) next = lastValid;
+        else {
+          // keine geeignete Kantenmitte vor der Abweichung: Punkt auf die Kante direkt davor zwingen
+          next = Math.max(anchor.type === 'mid' ? anchor.k + 1 : anchor.k, failAt - 1);
+          stats.forcedPoints++;
+        }
+        const pt = pointAlongEdge(G, E[next], V[next], 0.5);
+        out.push({ lat: pt[0], lon: pt[1], name: null, sym: 'Dot', km: kmBase + cum[next] + G.eLen[E[next]]/2, split: true, kind: 'mid' });
+        anchor = { type: 'mid', k: next };
+        if(performance.now() - lastYield > 100){
+          if(statusCb) statusCb(`Berechne Route für Neuberechnung: Tour-Abschnitt ${li+1}/${legs.length} …`);
+          await sleep(0);
+          lastYield = performance.now();
+          checkCancel();
+        }
+      }
+      // Ende des normalen Abschnitts: Zwangspunkt (Wegpunkt oder Sonderabschnitt-Beginn) wird im nächsten Schritt gesetzt
+      if(q === K) out.push(stampPoint(b, kmBase + cum[K]));
+    }
+    kmBase += cum[K];
+    if(performance.now() - lastYield > 100){
+      if(statusCb) statusCb(`Berechne Route für Neuberechnung: Tour-Abschnitt ${li+1}/${legs.length} …`);
+      await sleep(0);
+      lastYield = performance.now();
+      checkCancel();
+    }
+  }
+  return { pts: out, totalKm: kmBase, stats };
+}
+
+// Teilt die Routenpunkte in numSections etwa gleich lange Teilstrecken; Grenzen nur an geeigneten Punkten
+// (nicht mitten in einem Sonderabschnitt). Angrenzende Teilstrecken teilen sich den Grenzpunkt.
+function splitRecalcRoute(pts, totalKm, numSections){
+  if(numSections <= 1) return [pts];
+  const sections = [];
+  let startIdx = 0;
+  for(let s=1; s<numSections; s++){
+    const target = totalKm * s / numSections;
+    let idx = startIdx + 1;
+    while(idx < pts.length-1 && (pts[idx].km < target || !pts[idx].split)) idx++;
+    if(idx >= pts.length-1) break;
+    sections.push(pts.slice(startIdx, idx+1));
+    startIdx = idx;
+  }
+  sections.push(pts.slice(startIdx));
+  return sections;
+}
+
+function buildRecalcRouteGPX(sections, includeNames){
+  const lines = [];
+  lines.push('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>');
+  lines.push('<gpx xmlns="http://www.topografix.com/GPX/1/1" creator="Wegpunkt-Optimierer" version="1.1">');
+  for(const p of points){
+    lines.push(`  <wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}">`);
+    if(p.ele !== null && !isNaN(p.ele)) lines.push(`    <ele>${p.ele.toFixed(1)}</ele>`);
+    if(includeNames) lines.push(`    <name>${esc(p.name)}</name>`);
+    lines.push('  </wpt>');
+  }
+  sections.forEach((sec, idx) => {
+    lines.push('  <rte>');
+    const label = sections.length > 1 ? `Teilstrecke ${sectionNo(idx, sections.length)} (für Neuberechnung)` : 'Route (für Neuberechnung)';
+    lines.push(`    <name>${esc(label)}</name>`);
+    for(const c of sec){
+      lines.push(`    <rtept lat="${c.lat.toFixed(7)}" lon="${c.lon.toFixed(7)}">`);
+      if(c.name && (includeNames || c.kind === 'marker' || /Beginn|Ende/.test(c.name))) lines.push(`      <name>${esc(c.name)}</name>`);
+      lines.push(`      <sym>${c.sym}</sym>`);
+      lines.push('    </rtept>');
+    }
+    lines.push('  </rte>');
+  });
+  lines.push('</gpx>');
+  return lines.join('\n');
+}
+
+// Toleranz für Douglas-Peucker (m). Version 1/2 machten aus "0" versehentlich 15 m; jetzt: Minimum 1 m.
+function getRouteToleranceM(){
+  const v = parseFloat(el('routeTolerance') && el('routeTolerance').value);
+  if(!isFinite(v)) return 15;
+  return Math.max(1, Math.min(v, 200));
+}
+
+function formatMB(bytes){ return (bytes/1048576).toFixed(0) + ' MB'; }
+
+function estimateGraphBytes(G){
+  let b = 0;
+  for(const k of ['gLat','gLon','wayGeoStart','nodeLat','nodeLon','eU','eV','eLen','eCost','eGeoA','eGeoB','adjStart','adjTo','adjEdge','alive']){
+    if(G[k] && G[k].byteLength) b += G[k].byteLength;
+  }
+  return b + 9*8*G.N; // + Dijkstra-Arbeitsspeicher
+}
+
+// Reihenfolge der Punkte entlang der Hauptachse ihrer räumlichen Verteilung (für die Symmetrie-Ausnutzung).
+function principalAxisOrder(pts){
+  const n = pts.length;
+  const mLat = pts.reduce((s,p) => s+p.lat, 0)/n, mLon = pts.reduce((s,p) => s+p.lon, 0)/n;
+  const c = Math.cos(mLat*Math.PI/180);
+  let sxx = 0, syy = 0, sxy = 0;
+  const X = pts.map(p => (p.lon-mLon)*c), Y = pts.map(p => p.lat-mLat);
+  for(let i=0;i<n;i++){ sxx += X[i]*X[i]; syy += Y[i]*Y[i]; sxy += X[i]*Y[i]; }
+  const ang = 0.5*Math.atan2(2*sxy, sxx-syy);
+  const ux = Math.cos(ang), uy = Math.sin(ang);
+  return pts.map((_,i) => i).sort((a,b) => (X[a]*ux + Y[a]*uy) - (X[b]*ux + Y[b]*uy));
+}
+
+// Baut die (n+1)x(n+1)-Distanzmatrix (inkl. Dummy-Zeile/Spalte für den offenen Weg) über echte Wege.
+async function buildNetworkDistanceMatrix(statusCb){
+  const t0 = performance.now();
+  statusCb('Bestimme Suchgebiet …');
+  const bufferKm = getTileBufferKm();
+  const tiles = selectTiles(points, bufferKm);
+  statusCb(`Suchgebiet: ${tiles.length} Kacheln (Puffer ${bufferKm} km um die Wegpunkte) …`);
+  const load = await loadTiles(tiles, statusCb);
+  if(load.failed.length > 0){
+    if(load.useCache){
+      throw new Error(`${load.failed.length} von ${tiles.length} Kacheln konnten nicht von Overpass geladen werden ` +
+        `(Server überlastet oder Tageskontingent erreicht). Die übrigen ${tiles.length - load.failed.length} Kacheln sind im Zwischenspeicher. ` +
+        `Bitte später einfach erneut "Optimieren" klicken — dann werden nur die fehlenden Kacheln nachgeladen.`);
+    }
+    if(load.failed.length === tiles.length){
+      throw new Error('Keine einzige Kachel konnte geladen werden — Overpass-Server aktuell nicht erreichbar oder Internetverbindung gestört.');
+    }
+    statusCb(`Achtung: ${load.failed.length} von ${tiles.length} Kacheln fehlen (kein Zwischenspeicher verfügbar) — Wegenetz dort unvollständig.`);
+    await sleep(1500);
+  }
+  const settings = {
+    excludedTypes: getExcludedHighwayTypes(),
+    ...getExtraWayTypes(),
+    primaryPenalty: getPrimaryPenaltyFactor(),
+    surfacePenalty: getSurfacePenaltyFactor(),
+    visibilityPenalty: getVisibilityPenaltyFactor(),
+    smoothnessPenalty: getSmoothnessPenaltyFactor(),
+    minWidth: getMinWidth(),
+    widthPenalty: getWidthPenaltyFactor(),
+    hikingBonus: getHikingBonusFactor(),
+    sacScaleMax: getSacScaleMax()
+  };
+  lastNetworkGraph = null; dijkstraEngine = null; // alten Graphen freigeben, bevor der neue gebaut wird
+  let records = load.records;
+  const G = await buildCompactGraph(records, settings, statusCb);
+  records = null; load.records = null; // Kachel-Rohdaten freigeben
+  if(!G){
+    throw new Error('Keine Wege im Suchgebiet gefunden (Overpass-Antwort leer). Ggf. Gebiet zu klein/abgelegen, Filter zu streng, oder Overpass-Dienst temporär nicht erreichbar.');
+  }
+  statusCb(`Wegenetz geladen: ${G.wayCount} Wege, ${G.totalPoints} Stützpunkte, ${G.NJ} Kreuzungen/Wegenden, ${G.eU.n} Wegstücke` +
+    (G.excludedBySac > 0 ? ` (${G.excludedBySac} Wege wegen SAC-Grenze ausgeschlossen)` : '') + `. Binde Wegpunkte an …`);
+  await sleep(0);
+  const { snaps, bruteCount } = await snapWaypoints(G, points, statusCb);
+  const connectorDistances = insertWaypoints(G, points, snaps);
+  await finalizeGraph(G, statusCb);
+  if(bruteCount > 0) console.info(`${bruteCount} Wegpunkte lagen > 3 km vom Wegenetz entfernt und wurden per Komplettsuche angebunden.`);
+
+  let maxConnector = 0, connectorSum = 0;
+  for(const d of connectorDistances){ connectorSum += d; if(d > maxConnector) maxConnector = d; }
+  const connectorAvg = connectorSum / points.length;
+  lastConnectorDistances = connectorDistances;
+  lastConnectorDistancesForPoints = points;
+  const unsnapped = snaps.filter(s => !s).length;
+  statusCb(`Alle ${points.length} Wegpunkte angebunden — Anschlusswege: Summe ${connectorSum.toFixed(2)} km, ` +
+    `Durchschnitt ${(connectorAvg*1000).toFixed(0)} m, längster ${maxConnector.toFixed(3)} km` +
+    (unsnapped ? `, ${unsnapped} ohne Anbindung` : '') +
+    `. Rechennetz nach Ausdünnung: ${G.stats.edgesAfter} von ${G.stats.edgesBefore} Wegstücken, ca. ${formatMB(estimateGraphBytes(G))} Arbeitsspeicher. Berechne echte Wegdistanzen …`);
+  await sleep(0);
+
+  const m = n + 1; // + Dummy-Knoten für den offenen Weg (bleibt Distanz 0)
+  const Dnet = new Float64Array(m*m);
+  const eng = getEngine(G);
+  const wpt = [];
+  for(let i=0;i<n;i++) wpt.push(G.wptNode(i));
+  let fallbackPairs = 0, nnSum = 0;
+  let lastYield = performance.now();
+  const tMatrix = performance.now();
+  // Symmetrie: Wegdistanz A->B = B->A (ungerichtetes Netz). Die Punkte werden entlang der Hauptachse
+  // ihrer Verteilung abgearbeitet; jeder Lauf muss nur noch die später folgenden Punkte erreichen und
+  // bricht ab, sobald diese gefunden sind — die Suche wird dadurch von Lauf zu Lauf kleiner.
+  const procOrder = principalAxisOrder(points);
+  const rank = new Int32Array(n);
+  procOrder.forEach((idx, k) => { rank[idx] = k; });
+  for(let k=0;k<n;k++){
+    const i = procOrder[k];
+    const targets = [];
+    for(let q=k+1;q<n;q++) targets.push(wpt[procOrder[q]]);
+    if(targets.length) eng.run(wpt[i], targets);
+    let nearestForI = Infinity;
+    for(let j=0;j<n;j++){
+      if(i===j) continue;
+      let d;
+      if(rank[j] > k){
+        d = eng.realDist(wpt[j]);
+        if(d === undefined){
+          d = haversine(points[i].lat, points[i].lon, points[j].lat, points[j].lon);
+          fallbackPairs += 2;
+        }
+        Dnet[i*m+j] = d;
+        Dnet[j*m+i] = d;
+      } else {
+        d = Dnet[i*m+j]; // bereits beim früheren Lauf von j aus berechnet
+      }
+      if(d < nearestForI) nearestForI = d;
+    }
+    if(isFinite(nearestForI)) nnSum += nearestForI;
+    if(performance.now() - lastYield > 100){
+      const hochrechnung = nnSum * (n / (k+1));
+      const elapsed = (performance.now() - tMatrix)/1000;
+      // die Läufe werden kürzer: grobe Restzeit über den Anteil der noch offenen Punktepaare
+      const donePairs = k*(2*n-k-1)/2, totalPairs = n*(n-1)/2;
+      const rest = donePairs > 0 ? elapsed/donePairs*(totalPairs-donePairs) : 0;
+      statusCb(`Berechne echte Wegdistanzen: Punkt ${k+1}/${n}, Restzeit ca. ${formatDuration(Math.round(rest))} … ` +
+        `(nächster Nachbar: +${nearestForI.toFixed(2)} km, bisherige Summe: ${nnSum.toFixed(1)} km, ` +
+        `grobe Hochrechnung auf alle ${n} Punkte: ~${hochrechnung.toFixed(0)} km — nur Anhaltspunkt, nicht die tatsächliche Tour-Länge)`);
+      await sleep(0);
+      lastYield = performance.now();
+      checkCancel();
+    }
+  }
+  if(fallbackPairs > 0){
+    statusCb(`Fertig. Hinweis: ${fallbackPairs} von ${n*(n-1)} Punktepaaren waren im Wegenetz nicht verbunden — dort wurde ersatzweise die Luftlinie verwendet.`);
+  }
+  G.buildInfo = { tiles: tiles.length, fromCache: load.fromCache, fetched: load.fetched, bytes: load.bytesTotal, seconds: (performance.now()-t0)/1000, fallbackPairs };
+  lastNetworkGraph = G;
+  lastNetworkGraphForPoints = points;
+  return Dnet;
+}
+
+function tourLength(tour, closed){
+  let L = 0;
+  for(let i=0;i<tour.length-1;i++) L += D[dIdx(tour[i], tour[i+1])];
+  if(closed) L += D[dIdx(tour[tour.length-1], tour[0])];
+  return L;
+}
+
+function nearestNeighbor(start, m, allowed){
+  const unvisited = new Set(allowed);
+  unvisited.delete(start);
+  const tour = [start];
+  let cur = start;
+  while(unvisited.size){
+    let best=-1, bestD=Infinity;
+    for(const j of unvisited){
+      const dd = D[dIdx(cur,j)];
+      if(dd < bestD){ bestD = dd; best = j; }
+    }
+    tour.push(best);
+    unvisited.delete(best);
+    cur = best;
+  }
+  return tour;
+}
+
+function twoOpt(tour, closed, deadline){
+  const m = tour.length;
+  let improved = true;
+  while(improved && performance.now() < deadline){
+    improved = false;
+    for(let i=0;i<m-1;i++){
+      const a = tour[i], b = tour[i+1];
+      const dab = D[dIdx(a,b)];
+      for(let j=i+2;j<m;j++){
+        if(i===0 && j===m-1 && closed) continue;
+        const c = tour[j];
+        const dNextIdx = (j+1<m) ? tour[j+1] : (closed ? tour[0] : -1);
+        if(dNextIdx === -1) continue;
+        const dcd = D[dIdx(c,dNextIdx)];
+        const new1 = D[dIdx(a,c)];
+        const new2 = D[dIdx(b,dNextIdx)];
+        if(new1+new2+1e-9 < dab+dcd){
+          // reverse tour[i+1..j]
+          let lo=i+1, hi=j;
+          while(lo<hi){ const t=tour[lo]; tour[lo]=tour[hi]; tour[hi]=t; lo++; hi--; }
+          improved = true;
+          break;
+        }
+      }
+      if(improved) break;
+      if(performance.now() > deadline) break;
+    }
+  }
+  return tour;
+}
+
+function orOpt(tour, closed, deadline){
+  let m = tour.length;
+  let improved = true;
+  const segLens = [1,2,3];
+  while(improved && performance.now() < deadline){
+    improved = false;
+    for(const segLen of segLens){
+      let i = 0;
+      while(i + segLen <= m){
+        let prevIdx = i-1, nextIdx = i+segLen;
+        if(prevIdx < 0){
+          if(!closed){ i++; continue; }
+          prevIdx = m-1;
+        }
+        if(nextIdx >= m){
+          if(!closed){ i++; continue; }
+          nextIdx = 0;
+        }
+        const p = tour[prevIdx], s0 = tour[i], s1 = tour[i+segLen-1], q = tour[nextIdx];
+        const removedCost = D[dIdx(p,s0)] + D[dIdx(s1,q)] - D[dIdx(p,q)];
+        const seg = tour.slice(i, i+segLen);
+        const rest = tour.slice(0,i).concat(tour.slice(i+segLen));
+        const mlen = rest.length;
+        let bestGain = 1e-9, bestPos = -1, bestRev = false;
+        for(let k=0;k<mlen;k++){
+          const a = (k>0 || closed) ? rest[(k-1+mlen)%mlen] : null;
+          const b = (k<mlen) ? rest[k] : (closed ? rest[0] : null);
+          if(a===null || b===null) continue;
+          const base = D[dIdx(a,b)];
+          const addFwd = D[dIdx(a,seg[0])] + D[dIdx(seg[seg.length-1],b)] - base;
+          const gain = removedCost - addFwd;
+          if(gain > bestGain){ bestGain = gain; bestPos = k; bestRev = false; }
+          if(segLen>1){
+            const addRev = D[dIdx(a,seg[seg.length-1])] + D[dIdx(seg[0],b)] - base;
+            const gainR = removedCost - addRev;
+            if(gainR > bestGain){ bestGain = gainR; bestPos = k; bestRev = true; }
+          }
+        }
+        if(bestPos >= 0){
+          const segUse = bestRev ? seg.slice().reverse() : seg;
+          tour = rest.slice(0,bestPos).concat(segUse, rest.slice(bestPos));
+          improved = true;
+          m = tour.length;
+        }
+        i++;
+      }
+    }
+    if(performance.now() > deadline) break;
+  }
+  return tour;
+}
+
+function doubleBridge(tour){
+  const m = tour.length;
+  if(m < 8) return tour.slice();
+  const idxs = new Set();
+  while(idxs.size < 3) idxs.add(1 + Math.floor(Math.random()*(m-1)));
+  const [p1,p2,p3] = Array.from(idxs).sort((a,b)=>a-b);
+  const a = tour.slice(0,p1), b = tour.slice(p1,p2), c = tour.slice(p2,p3), d = tour.slice(p3);
+  return a.concat(c,b,d);
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function optimize(closed, budgetMs, statusPrefix, numNodes){
+  const m = numNodes; // n for a real closed tour, n+1 when solving the dummy-node-augmented graph for an open path
+  const allowed = [];
+  for(let i=0;i<m;i++) allowed.push(i);
+  const tEnd = performance.now() + budgetMs;
+  const constructBudget = budgetMs * 0.4;
+  const tConstructEnd = performance.now() + constructBudget;
+
+  let bestTour = null, bestLen = Infinity;
+  const numStarts = Math.min(8, m);
+  const starts = [];
+  for(let k=0;k<numStarts;k++) starts.push(Math.floor(k*m/numStarts));
+
+  let lastYield = performance.now();
+  for(let s=0; s<starts.length; s++){
+    checkCancel();
+    if(performance.now() > tConstructEnd) break;
+    const perStartDeadline = Math.min(tConstructEnd, performance.now() + Math.max(200, (tConstructEnd-performance.now())/(starts.length-s)));
+    let tour = nearestNeighbor(starts[s], m, allowed);
+    tour = twoOpt(tour, closed, perStartDeadline);
+    tour = orOpt(tour, closed, perStartDeadline);
+    tour = twoOpt(tour, closed, perStartDeadline);
+    const L = tourLength(tour, closed);
+    if(L < bestLen){ bestLen = L; bestTour = tour.slice(); }
+    el('status').textContent = `${statusPrefix} — Start ${s+1}/${starts.length}: ${L.toFixed(2)} km (bislang beste: ${bestLen.toFixed(2)} km)`;
+    if(performance.now() - lastYield > 30){ await sleep(0); lastYield = performance.now(); }
+  }
+
+  let curTour = bestTour.slice(), curLen = bestLen;
+  let it = 0;
+  while(performance.now() < tEnd){
+    checkCancel();
+    it++;
+    let cand = doubleBridge(curTour);
+    const deadline = Math.min(tEnd, performance.now() + 1500);
+    cand = twoOpt(cand, closed, deadline);
+    cand = orOpt(cand, closed, deadline);
+    cand = twoOpt(cand, closed, deadline);
+    const L = tourLength(cand, closed);
+    if(L < curLen){
+      curTour = cand; curLen = L;
+      if(L < bestLen){ bestLen = L; bestTour = cand.slice(); }
+    } else if(L < curLen*1.01){
+      curTour = cand; curLen = L;
+    }
+    if(it % 3 === 0){
+      el('status').textContent = `${statusPrefix} — Perturbation ${it}: aktuell beste Länge ${bestLen.toFixed(2)} km`;
+      el('statIter').textContent = it;
+      await sleep(0);
+    }
+  }
+  return {tour: bestTour, length: bestLen, iterations: it};
+}
+
+// ---------- Vergleich zweier Touren (Luftlinie vs. echtes Wegenetz) ----------
+// Findet die beste Ausrichtung (Rotation + Richtung) einer zyklischen Reihenfolge
+// gegenüber einer Referenz-Reihenfolge, damit ein anderer Startpunkt/eine andere
+// Laufrichtung nicht fälschlich als "komplett andere Route" gezählt wird.
+function bestCyclicAlignment(refOrder, otherOrder){
+  const m = refOrder.length;
+  let bestMatches = -1, bestRot = 0, bestRev = false;
+  for(const rev of [false, true]){
+    const seq = rev ? otherOrder.slice().reverse() : otherOrder;
+    for(let rot=0; rot<m; rot++){
+      let matches = 0;
+      for(let i=0;i<m;i++){
+        if(refOrder[i] === seq[(i+rot)%m]) matches++;
+      }
+      if(matches > bestMatches){ bestMatches = matches; bestRot = rot; bestRev = rev; }
+    }
+  }
+  return { matches: bestMatches, reversed: bestRev };
+}
+
+// Für den offenen Weg: nur Vorwärts- vs. Rückwärtsrichtung testen (Start/Ziel können vertauscht sein).
+function bestOpenAlignment(refOrder, otherOrder){
+  const m = refOrder.length;
+  const revOrder = otherOrder.slice().reverse();
+  let matchesFwd = 0, matchesRev = 0;
+  for(let i=0;i<m;i++){
+    if(refOrder[i] === otherOrder[i]) matchesFwd++;
+    if(refOrder[i] === revOrder[i]) matchesRev++;
+  }
+  return matchesRev > matchesFwd ? {matches: matchesRev, reversed:true} : {matches: matchesFwd, reversed:false};
+}
+
+function compareTours(refOrder, otherOrder, closed){
+  if(refOrder.length !== otherOrder.length) return null;
+  const align = closed ? bestCyclicAlignment(refOrder, otherOrder) : bestOpenAlignment(refOrder, otherOrder);
+  const m = refOrder.length;
+  return { matches: align.matches, differences: m - align.matches, total: m, reversed: align.reversed };
+}
+
+function updateCompareBox(){
+  const box = el('compareBox');
+  const modeLabel = tourMode === 'closed' ? 'Rundtour' : 'offener Weg';
+  const a = savedResults.beeline[tourMode];
+  const b = savedResults.network[tourMode];
+  if(!a || !b){ box.style.display = 'none'; return; }
+  const cmp = compareTours(a.order, b.order, tourMode === 'closed');
+  if(!cmp){ box.style.display = 'none'; return; }
+  const pct = (100 * cmp.matches / cmp.total).toFixed(1);
+  box.style.display = 'block';
+  box.innerHTML =
+    `<strong>Vergleich Luftlinie ↔ echtes Wegenetz</strong> (${modeLabel}): ` +
+    `${cmp.differences} von ${cmp.total} Positionen unterschiedlich (${pct}% identisch)` +
+    (tourMode === 'closed' ? ' — unter Berücksichtigung von Startpunkt und Laufrichtung' : (cmp.reversed ? ' — Wegenetz-Route lief in umgekehrter Richtung, entsprechend ausgerichtet' : '')) +
+    `.<br>Längen: Luftlinie ${a.length.toFixed(1)} km, Wegenetz ${b.length.toFixed(1)} km.`;
+}
+
+el('btnRun').addEventListener('click', async () => {
+  if(running) return;
+  running = true;
+  cancelRequested = false;
+  el('btnRun').disabled = true;
+  el('btnDownloadTrack').disabled = true;
+  el('btnDownloadRoute').disabled = true;
+  el('btnDownloadRecalc').disabled = true;
+  el('btnCancel').disabled = false;
+  const budgetSec = Math.max(2, Math.min(900, parseInt(el('budget').value) || 25));
+  const budgetMs = budgetSec * 1000;
+  el('stats').style.display = 'flex';
+  el('statN').textContent = n;
+  el('statIter').textContent = '0';
+  const runStartTime = startElapsedTimer();
+
+  el('networkError').style.display = 'none';
+
+  try{
+    if(distanceMode === 'network' && networkReadyForPoints !== points){
+      try{
+        D = await buildNetworkDistanceMatrix(msg => { el('status').textContent = msg; });
+        networkReadyForPoints = points;
+      }catch(err){
+        if(err instanceof CancelledError) throw err; // Abbruch nicht als Netzwerkfehler behandeln
+        console.error('Wegenetz-Fehler:', err);
+        el('networkError').style.display = 'block';
+        const tileProblem = /Kacheln konnten nicht/.test(err.message);
+        el('networkError').textContent = tileProblem ?
+          ('Echtes Wegenetz unvollständig: ' + err.message + '\n' +
+           'Es wurde ersatzweise mit der Luftlinie gerechnet — das Ergebnis unten ist NICHT das echte Wegenetz.') :
+          'Echtes Wegenetz konnte nicht geladen werden: ' + err.message + '\n' +
+          'Mögliche Ursache: Wenn diese Seite per Doppelklick als lokale Datei (file://) geöffnet ist, blockieren manche Browser Netzwerk-Anfragen an fremde Server. ' +
+          'Abhilfe: Datei über einen lokalen Webserver öffnen (z. B. "python3 -m http.server" im Ordner ausführen und http://localhost:8000/ im Browser aufrufen) statt per Doppelklick. ' +
+          'Details ggf. in der Browser-Konsole (F12).\n' +
+          'Es wurde ersatzweise mit der Luftlinie gerechnet — das Ergebnis unten ist NICHT das echte Wegenetz.';
+        buildBeelineDistanceMatrix();
+      }
+    } else if(distanceMode === 'beeline' && networkReadyForPoints !== null){
+      buildBeelineDistanceMatrix();
+    }
+
+    function connectorSummarySuffix(){
+      if(!(lastConnectorDistances && lastConnectorDistancesForPoints === points && distanceMode === 'network')) return '';
+      const sum = lastConnectorDistances.reduce((a,b)=>a+b,0);
+      const avgM = (sum/points.length)*1000;
+      const max = Math.max(...lastConnectorDistances);
+      let s = ` Anschlusswege zum Wegenetz: Summe ${sum.toFixed(2)} km, Ø ${avgM.toFixed(0)} m, längster ${max.toFixed(3)} km.`;
+      const G = lastNetworkGraph;
+      if(G && G.buildInfo && lastNetworkGraphForPoints === points){
+        const bi = G.buildInfo;
+        s += ` Wegenetz: ${bi.tiles} Kacheln (${bi.fromCache} aus Zwischenspeicher${bi.fetched ? `, ${bi.fetched} neu geladen, ${(bi.bytes/1048576).toFixed(0)} MB` : ''}), ` +
+             `${G.stats.edgesAfter} Wegstücke im Rechennetz` + (bi.fallbackPairs ? `, ${bi.fallbackPairs} Punktepaare ohne Wegverbindung (Luftlinie)` : '') + '.';
+      }
+      return s;
+    }
+
+    if(tourMode === 'closed'){
+      const res = await optimize(true, budgetMs, 'Rundtour', n);
+      bestResult = { order: res.tour, length: res.length, mode: 'closed' };
+      el('statLen').textContent = res.length.toFixed(1);
+      const dauer = stopElapsedTimer(runStartTime);
+      el('status').textContent = `Fertig. Geschlossene Rundtour: ${res.length.toFixed(1)} km über ${res.iterations} Perturbationen. Laufzeit: ${formatDuration(dauer)}.` + connectorSummarySuffix();
+      drawPlot(bestResult);
+    } else {
+      const res = await optimize(true, budgetMs, 'Offener Weg', n+1); // closed=true on augmented graph incl. dummy node n
+      const dummyPos = res.tour.indexOf(n);
+      const openOrder = res.tour.slice(dummyPos+1).concat(res.tour.slice(0,dummyPos));
+      const openLen = tourLength(openOrder, false);
+      bestResult = { order: openOrder, length: openLen, mode: 'open' };
+      el('statLen').textContent = openLen.toFixed(1);
+      const dauer = stopElapsedTimer(runStartTime);
+      el('status').textContent = `Fertig. Offener Weg: ${openLen.toFixed(1)} km, Start "${points[openOrder[0]].name}" → Ziel "${points[openOrder[openOrder.length-1]].name}". Laufzeit: ${formatDuration(dauer)}.` + connectorSummarySuffix();
+      drawPlot(bestResult);
+    }
+    bestResult.usedNetwork = (distanceMode === 'network' && networkReadyForPoints === points && lastNetworkGraphForPoints === points);
+
+    // Rückweg-Analyse automatisch anhängen (nur im Wegenetz-Modus, direkt aus dem echten Tourpfad,
+    // kein Extra-Klick nötig).
+    if(bestResult.usedNetwork){
+      const baseStatus = el('status').textContent;
+      try{
+        const bt = await analyzeBacktrackDistance(bestResult.order, bestResult.mode === 'closed', msg => { el('status').textContent = baseStatus + ' ' + msg; });
+        if(bt){
+          el('status').textContent = baseStatus +
+            ` Aufschlüsselung: echtes Wegenetz ${bt.pureNetworkKm.toFixed(2)} km + Hinweg-Anteil ${bt.deadEndSingleKm.toFixed(2)} km + ` +
+            `Rückweg-Anteil ${bt.totalBacktrackKm.toFixed(2)} km = ${(bt.pureNetworkKm+bt.deadEndSingleKm+bt.totalBacktrackKm).toFixed(2)} km ` +
+            `(${bt.edgesUsedMultiple} von ${bt.totalEdgesUsed} genutzten Wegabschnitten sind Sackgassen)` +
+            (bt.fallbackLegs > 0 ? `, ${bt.fallbackLegs} Tour-Abschnitte ohne echten Pfad ausgelassen` : '') + `.`;
+        } else {
+          el('status').textContent = baseStatus;
+        }
+      }catch(err){
+        if(err instanceof CancelledError){
+          el('status').textContent = baseStatus + ' (Rückweg-Analyse abgebrochen.)';
+        } else {
+          console.error('Rückweg-Analyse fehlgeschlagen:', err);
+          el('status').textContent = baseStatus;
+        }
+      }
+    }
+
+    savedResults[distanceMode][tourMode] = { order: bestResult.order.slice(), length: bestResult.length };
+    updateCompareBox();
+  }catch(err){
+    stopElapsedTimer(runStartTime);
+    if(err instanceof CancelledError){
+      el('status').textContent = 'Abgebrochen durch Nutzer. Bisheriges Zwischenergebnis (falls vorhanden) bleibt erhalten.';
+    } else {
+      console.error(err);
+      el('status').textContent = 'Unerwarteter Fehler: ' + err.message;
+    }
+  } finally {
+    el('btnRun').disabled = false;
+    el('btnDownloadRoute').disabled = !bestResult;
+    el('btnDownloadTrack').disabled = !(bestResult && bestResult.usedNetwork);
+    el('btnDownloadRecalc').disabled = !(bestResult && bestResult.usedNetwork);
+    el('btnCsv').disabled = !bestResult;
+    el('btnExportMatrix').disabled = !bestResult;
+    el('btnExportNetwork').disabled = !(lastNetworkGraph && lastNetworkGraphForPoints === points);
+    el('btnAnalyzeBacktrack').disabled = !(bestResult && bestResult.usedNetwork);
+    el('btnCancel').disabled = true;
+    running = false;
+  }
+});
+
+function drawPlot(result){
+  const canvas = el('plot');
+  if(!result){ canvas.style.display='none'; return; }
+  canvas.style.display = 'block';
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  const lats = points.map(p=>p.lat), lons = points.map(p=>p.lon);
+  const minLat=Math.min(...lats), maxLat=Math.max(...lats);
+  const minLon=Math.min(...lons), maxLon=Math.max(...lons);
+  const pad = 30;
+  const cosLat = Math.cos((minLat+maxLat)/2 * Math.PI/180);
+  const spanX = (maxLon-minLon)*cosLat || 1;
+  const spanY = (maxLat-minLat) || 1;
+  const scale = Math.min((W-2*pad)/spanX, (H-2*pad)/spanY);
+  const offX = (W - spanX*scale)/2;
+  const offY = (H - spanY*scale)/2;
+
+  function toXY(p){
+    const x = offX + (p.lon-minLon)*cosLat*scale;
+    const y = H - (offY + (p.lat-minLat)*scale);
+    return [x,y];
+  }
+
+  // points
+  ctx.fillStyle = '#c9c2ab';
+  for(const p of points){
+    const [x,y] = toXY(p);
+    ctx.beginPath(); ctx.arc(x,y,2.2,0,7); ctx.fill();
+  }
+
+  // route
+  ctx.strokeStyle = '#3c5a45';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  const order = result.order;
+  for(let i=0;i<order.length;i++){
+    const [x,y] = toXY(points[order[i]]);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  if(result.mode==='closed'){
+    const [x0,y0] = toXY(points[order[0]]);
+    ctx.lineTo(x0,y0);
+  }
+  ctx.stroke();
+
+  // start/end markers
+  const [sx,sy] = toXY(points[order[0]]);
+  ctx.fillStyle = '#b5842a';
+  ctx.beginPath(); ctx.arc(sx,sy,4,0,7); ctx.fill();
+  if(result.mode==='open'){
+    const [ex,ey] = toXY(points[order[order.length-1]]);
+    ctx.fillStyle = '#8a3b32';
+    ctx.beginPath(); ctx.arc(ex,ey,4,0,7); ctx.fill();
+  }
+}
+
+el('btnDownloadTrack').addEventListener('click', async () => {
+  if(!bestResult || !bestResult.usedNetwork) return;
+  if(el('btnDownloadTrack').disabled) return; // Doppelklicks waehrend laufender Berechnung ignorieren
+  el('btnDownloadTrack').disabled = true;
+  el('btnRun').disabled = true;
+  cancelRequested = false;
+  running = true;
+  el('btnCancel').disabled = false;
+  const prevStatus = el('status').textContent;
+  let realPolyline = null;
+  try{
+    const rp = await buildRealPolylineForTour(bestResult.order, bestResult.mode === 'closed', msg => { el('status').textContent = msg; });
+    if(rp){
+      realPolyline = rp.polyline;
+      el('status').textContent = prevStatus + (rp.fallbackEdges > 0
+        ? ` (Hinweis: ${rp.fallbackEdges} von ${rp.totalEdges} Tour-Abschnitten im Track sind Luftlinien-Ersatz, da ohne echte Wegverbindung.)`
+        : '');
+    } else {
+      el('status').textContent = prevStatus;
+    }
+  }catch(err){
+    if(err instanceof CancelledError){
+      el('status').textContent = prevStatus + ' (Abgebrochen.)';
+      el('btnDownloadTrack').disabled = false;
+      el('btnRun').disabled = false;
+      el('btnCancel').disabled = true;
+      running = false;
+      return;
+    } else {
+      throw err;
+    }
+  } finally {
+    el('btnDownloadTrack').disabled = false;
+    el('btnRun').disabled = false;
+    el('btnCancel').disabled = true;
+    running = false;
+  }
+  const includeNames = el('includeNames') ? el('includeNames').checked : true;
+  if(!realPolyline || realPolyline.length < 2){
+    el('status').textContent = prevStatus + ' (Kein echter Wegverlauf verfügbar, Track nicht erzeugt.)';
+    return;
+  }
+  const numSections = Math.max(1, Math.min(20, parseInt(el('trackSections').value) || 1));
+  const sections = splitPolylineIntoSections(realPolyline, numSections);
+  const gpx = buildSectionedTrackGPX(sections, includeNames);
+  const blob = new Blob([gpx], {type:'application/gpx+xml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = inputBaseName + (bestResult.mode === 'closed' ? '_Rundtour' : '_Offene_Route') + '_Track.gpx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  el('status').textContent = el('status').textContent.replace(/ \(\d+ Teilstrecken?\.\)$/, '') + ` (${sections.length} Teilstrecke${sections.length>1?'n':''}.)`;
+});
+
+el('btnDownloadRoute').addEventListener('click', async () => {
+  if(!bestResult) return;
+  if(el('btnDownloadRoute').disabled) return;
+  const includeNames = el('includeNames') ? el('includeNames').checked : true;
+
+  function downloadCompactRoute(prevStatus){
+    const gpx = buildGPX(bestResult, null, includeNames, {route:true, track:false});
+    const blob = new Blob([gpx], {type:'application/gpx+xml'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = inputBaseName + (bestResult.mode === 'closed' ? '_Rundtour' : '_Offene_Route') + '_Route.gpx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    el('status').textContent = prevStatus + ' (Route als GPX heruntergeladen — kompakt, kein echter Wegverlauf verfügbar.)';
+  }
+
+  if(!bestResult.usedNetwork){
+    downloadCompactRoute(el('status').textContent.replace(/ \(Route (heruntergeladen|als GPX heruntergeladen)[^)]*\)$/, ''));
+    return;
+  }
+
+  el('btnDownloadRoute').disabled = true;
+  el('btnRun').disabled = true;
+  cancelRequested = false;
+  running = true;
+  el('btnCancel').disabled = false;
+  const prevStatus = el('status').textContent.replace(/ \(Route (heruntergeladen|als GPX heruntergeladen)[^)]*\)$/, '');
+  try{
+    const rp = await buildRealPolylineForTour(bestResult.order, bestResult.mode === 'closed', msg => { el('status').textContent = msg; });
+    if(rp && rp.polyline.length > 1){
+      const toleranceM = getRouteToleranceM();
+      const numSections = Math.max(1, Math.min(20, parseInt(el('routeSections').value) || 1));
+      const simplified = simplifyPolylineDP(rp.polyline, toleranceM);
+      const sections = splitPolylineIntoSections(simplified, numSections);
+      const gpx = buildDenseRouteGPX(sections, includeNames);
+      const blob = new Blob([gpx], {type:'application/gpx+xml'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = inputBaseName + (bestResult.mode === 'closed' ? '_Rundtour' : '_Offene_Route') + '_Route.gpx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      el('status').textContent = prevStatus + ` (Route heruntergeladen: ${sections.length} Teilstrecke${sections.length>1?'n':''}, ${rp.polyline.length} → ${simplified.length} Stützpunkte bei ${toleranceM} m Toleranz.)`;
+    } else {
+      downloadCompactRoute(prevStatus);
+    }
+  }catch(err){
+    if(err instanceof CancelledError){
+      el('status').textContent = prevStatus + ' (Abgebrochen.)';
+    } else {
+      throw err;
+    }
+  } finally {
+    el('btnDownloadRoute').disabled = false;
+    el('btnRun').disabled = false;
+    el('btnCancel').disabled = true;
+    running = false;
+  }
+});
+
+el('btnDownloadRecalc').addEventListener('click', async () => {
+  if(!bestResult || !bestResult.usedNetwork) return;
+  if(el('btnDownloadRecalc').disabled) return;
+  const includeNames = el('includeNames') ? el('includeNames').checked : true;
+  el('btnDownloadRecalc').disabled = true;
+  el('btnRun').disabled = true;
+  cancelRequested = false;
+  running = true;
+  el('btnCancel').disabled = false;
+  const prevStatus = el('status').textContent.replace(/ \((Route|Neuberechnungs-Route)[^)]*\)$/, '');
+  try{
+    const res = await buildRecalcRoute(bestResult.order, bestResult.mode === 'closed', getRouteToleranceM(), msg => { el('status').textContent = msg; });
+    if(!res){
+      el('status').textContent = prevStatus + ' (Kein aktuelles Wegenetz — bitte erst neu optimieren.)';
+      return;
+    }
+    const numSections = Math.max(1, Math.min(20, parseInt(el('routeSections').value) || 1));
+    const sections = splitRecalcRoute(res.pts, res.totalKm, numSections);
+    const gpx = buildRecalcRouteGPX(sections, includeNames);
+    const blob = new Blob([gpx], {type:'application/gpx+xml'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = inputBaseName + (bestResult.mode === 'closed' ? '_Rundtour' : '_Offene_Route') + '_Route_Neuberechnung.gpx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const st = res.stats;
+    const spec = [1,2,3,4].filter(c => st.specialRuns[c] > 0).map(c => `${st.specialRuns[c]}× ${CLS_LABEL[c]} (${st.specialKm[c].toFixed(1)} km)`);
+    const perKm = res.pts.length / Math.max(1, res.totalKm);
+    el('status').textContent = prevStatus + ` (Neuberechnungs-Route heruntergeladen: ${sections.length} Teilstrecke${sections.length>1?'n':''}, ` +
+      `${res.pts.length} Routenpunkte für ${res.totalKm.toFixed(1)} km (Ø ${(1000/perKm).toFixed(0)} m Abstand)` +
+      (spec.length ? `; mit "Gerade" zu fahrende Abschnitte: ${spec.join(', ')}` : '; keine Abschnitte auf Bundesstraße/Fähre/Seilbahn') +
+      (st.fallbackLegs ? `; ${st.fallbackLegs} Tour-Abschnitte ohne Wegverbindung (Luftlinie)` : '') + '.)';
+  }catch(err){
+    if(err instanceof CancelledError){
+      el('status').textContent = prevStatus + ' (Abgebrochen.)';
+    } else {
+      console.error(err);
+      el('status').textContent = prevStatus + ' (Fehler: ' + err.message + ')';
+    }
+  } finally {
+    el('btnDownloadRecalc').disabled = false;
+    el('btnRun').disabled = false;
+    el('btnCancel').disabled = true;
+    running = false;
+  }
+});
+
+el('btnCsv').addEventListener('click', async () => {
+  if(!bestResult) return;
+  if(el('btnCsv').disabled) return;
+  el('btnCsv').disabled = true;
+  el('btnRun').disabled = true;
+  cancelRequested = false;
+  running = true;
+  el('btnCancel').disabled = false;
+  const prevStatus = el('status').textContent;
+  try{
+    const segs = await computeSegmentDistances(bestResult.order, bestResult.mode === 'closed', msg => { el('status').textContent = msg; });
+    const num = x => (x === null || x === undefined) ? '' : x.toFixed(3).replace('.', ',');
+    const numCoord = x => (x === null || x === undefined) ? '' : x.toFixed(7).replace('.', ',');
+    const numEle = x => (x === null || x === undefined) ? '' : x.toFixed(1).replace('.', ',');
+    const csvField = s => /[;"\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    const hasConnectors = lastConnectorDistances && lastConnectorDistancesForPoints === points;
+    const lines = ['Position;Name;Breitengrad;Längengrad;Höhe (m);Luftlinie zum nächsten Punkt (km);Echter Weg zum nächsten Punkt (km);Anschlussweg zum Wegenetz (km)'];
+    const order = bestResult.order;
+    for(let i=0;i<order.length;i++){
+      const p = points[order[i]];
+      const seg = segs.find(s => s.fromIdx === order[i]);
+      lines.push([
+        i+1,
+        csvField(p.name),
+        numCoord(p.lat), numCoord(p.lon),
+        p.ele != null && !isNaN(p.ele) ? numEle(p.ele) : '',
+        seg ? num(seg.beeline) : '',
+        seg ? num(seg.real) : '',
+        hasConnectors ? num(lastConnectorDistances[order[i]]) : ''
+      ].join(';'));
+    }
+    const csv = lines.join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8'}); // BOM für korrekte Umlaute in Excel
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = inputBaseName + (bestResult.mode === 'closed' ? '_Rundtour' : '_Offene_Route') + '_Entfernungen.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    el('status').textContent = prevStatus + ' (Entfernungsliste als CSV heruntergeladen.)';
+  }catch(err){
+    if(err instanceof CancelledError){
+      el('status').textContent = prevStatus + ' (CSV-Export abgebrochen.)';
+    } else {
+      console.error(err);
+      el('status').textContent = prevStatus + ' (Fehler beim CSV-Export: ' + err.message + ')';
+    }
+  } finally {
+    el('btnCsv').disabled = false;
+    el('btnRun').disabled = false;
+    el('btnCancel').disabled = true;
+    running = false;
+  }
+});
+
+el('btnExportMatrix').addEventListener('click', () => {
+  if(!bestResult || !D) return;
+  const m = n + 1; // Stride der gespeicherten Matrix (inkl. Dummy-Knoten, der hier weggelassen wird)
+  const matrix = [];
+  for(let i=0;i<n;i++){
+    const row = new Array(n);
+    for(let j=0;j<n;j++) row[j] = D[i*m+j];
+    matrix.push(row);
+  }
+  const exportObj = {
+    generatedBy: 'Wegpunkt-Optimierer',
+    hinweis: 'matrix_km[i][j] = Distanz von Punkt i zu Punkt j in km, wie zuletzt fuer die Optimierung verwendet.',
+    distanzmodell: bestResult.usedNetwork ? 'network' : 'beeline',
+    tourform: bestResult.mode,
+    bisherBesteLaenge_km: bestResult.length,
+    bisherBesteReihenfolge: bestResult.order,
+    punkte: points.map(p => ({ name: p.name, lat: p.lat, lon: p.lon, ele: p.ele })),
+    matrix_km: matrix
+  };
+  const json = JSON.stringify(exportObj);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = inputBaseName + '_distanzmatrix.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  el('status').textContent = el('status').textContent + ' (Distanzmatrix als JSON exportiert.)';
+});
+
+el('btnExportNetwork').addEventListener('click', () => {
+  const G = lastNetworkGraph;
+  if(!G || lastNetworkGraphForPoints !== points) return;
+  // In Blöcken zusammensetzen, damit auch sehr große Netze (Millionen Punkte) ohne riesigen Einzel-String auskommen.
+  const parts = [];
+  let buf = [];
+  buf.push('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>');
+  buf.push('<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxx="http://www.garmin.com/xmlschemas/GpxExtensions/v3" creator="Wegpunkt-Optimierer" version="1.1">');
+  buf.push('  <trk>');
+  buf.push('    <name>OSM-Wegenetz (abgefragte Rohdaten)</name>');
+  buf.push('    <extensions><gpxx:TrackExtension><gpxx:DisplayColor>Magenta</gpxx:DisplayColor></gpxx:TrackExtension></extensions>');
+  let totalPts = 0;
+  for(let s=0; s<G.wayCount; s++){
+    buf.push('    <trkseg>');
+    for(let g=G.wayGeoStart[s]; g<G.wayGeoStart[s+1]; g++){
+      buf.push(`      <trkpt lat="${(G.gLat[g]/1e7).toFixed(7)}" lon="${(G.gLon[g]/1e7).toFixed(7)}"></trkpt>`);
+      totalPts++;
+    }
+    buf.push('    </trkseg>');
+    if(buf.length > 50000){ parts.push(buf.join('\n') + '\n'); buf = []; }
+  }
+  buf.push('  </trk>');
+  buf.push('</gpx>');
+  parts.push(buf.join('\n'));
+  const blob = new Blob(parts, {type:'application/gpx+xml'});
+  const sizeMB = (blob.size/1048576).toFixed(1);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = inputBaseName + '_OSM_Wegenetz.gpx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  el('status').textContent = el('status').textContent + ` (Wegenetz als GPX exportiert: ${G.wayCount} Wege, ${totalPts} Punkte, ~${sizeMB} MB` +
+    (totalPts > 1000000 ? ' — sehr groß, Basecamp kann damit langsam werden' : '') + '.)';
+});
+
+el('btnClearCache').addEventListener('click', async () => {
+  if(running) return;
+  try{
+    const ok = await TileCache.clear();
+    el('cacheInfo').textContent = ok ? 'Zwischenspeicher geleert.' : 'Zwischenspeicher in diesem Browser nicht verfügbar.';
+  }catch(err){
+    el('cacheInfo').textContent = 'Leeren fehlgeschlagen: ' + err.message;
+  }
+});
+refreshCacheInfo();
+
+el('btnAnalyzeBacktrack').addEventListener('click', async () => {
+  if(!bestResult || !bestResult.usedNetwork) return;
+  if(el('btnAnalyzeBacktrack').disabled) return;
+  el('btnAnalyzeBacktrack').disabled = true;
+  el('btnRun').disabled = true;
+  cancelRequested = false;
+  running = true;
+  el('btnCancel').disabled = false;
+  const prevStatus = el('status').textContent;
+  try{
+    const res = await analyzeBacktrackDistance(bestResult.order, bestResult.mode === 'closed', msg => { el('status').textContent = msg; });
+    if(res){
+      el('status').textContent = prevStatus +
+        ` (Aufschlüsselung: echtes Wegenetz ${res.pureNetworkKm.toFixed(2)} km + Hinweg-Anteil ${res.deadEndSingleKm.toFixed(2)} km + ` +
+        `Rückweg-Anteil ${res.totalBacktrackKm.toFixed(2)} km = ${(res.pureNetworkKm+res.deadEndSingleKm+res.totalBacktrackKm).toFixed(2)} km ` +
+        `(${res.edgesUsedMultiple} von ${res.totalEdgesUsed} genutzten Wegabschnitten sind Sackgassen)` +
+        (res.fallbackLegs > 0 ? `, ${res.fallbackLegs} Tour-Abschnitte ohne echten Pfad ausgelassen` : '') + `.)`;
+    } else {
+      el('status').textContent = prevStatus + ' (Analyse nicht möglich — kein aktueller Wegenetz-Graph vorhanden.)';
+    }
+  }catch(err){
+    if(err instanceof CancelledError){
+      el('status').textContent = prevStatus + ' (Analyse abgebrochen.)';
+    } else {
+      console.error(err);
+      el('status').textContent = prevStatus + ' (Fehler bei der Analyse: ' + err.message + ')';
+    }
+  } finally {
+    el('btnAnalyzeBacktrack').disabled = false;
+    el('btnRun').disabled = false;
+    el('btnCancel').disabled = true;
+    running = false;
+  }
+});
+
+
+// Baut eine GPX mit einer oder mehreren <rte>-Blöcken aus den (vereinfachten, ggf. sektionierten)
+// Punktfolgen des echten Wegverlaufs — im Gegensatz zur einfachen Route folgt diese eng genug dem
+// echten Weg, dass eine Neuberechnung in Basecamp o. ä. nicht mehr "raten" muss.
+function buildDenseRouteGPX(sections, includeNames){
+  const lines = [];
+  lines.push('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>');
+  lines.push('<gpx xmlns="http://www.topografix.com/GPX/1/1" creator="Wegpunkt-Optimierer" version="1.1">');
+  for(const p of points){
+    lines.push(`  <wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}">`);
+    if(p.ele !== null && !isNaN(p.ele)) lines.push(`    <ele>${p.ele.toFixed(1)}</ele>`);
+    if(includeNames) lines.push(`    <name>${esc(p.name)}</name>`);
+    lines.push('  </wpt>');
+  }
+  sections.forEach((sec, idx) => {
+    lines.push('  <rte>');
+    const label = sections.length > 1 ? `Teilstrecke ${sectionNo(idx, sections.length)} (echter Weg, vereinfacht)` : 'Route (echter Weg, vereinfacht)';
+    lines.push(`    <name>${esc(label)}</name>`);
+    for(const c of sec){
+      lines.push(`    <rtept lat="${c[0].toFixed(7)}" lon="${c[1].toFixed(7)}"><sym>Dot</sym></rtept>`);
+    }
+    lines.push('  </rte>');
+  });
+  lines.push('</gpx>');
+  return lines.join('\n');
+}
+
+// Baut eine GPX mit einem oder mehreren <trk>-Elementen (statt nur einem <trkseg>) aus dem
+// echten Wegverlauf — für lange Strecken in mehrere, einzeln handhabbare Teiltracks aufgeteilt
+// (nach echter Distanz, nahtloser Anschluss), analog zur Teilstrecken-Aufteilung bei der Route.
+function buildSectionedTrackGPX(sections, includeNames){
+  const lines = [];
+  lines.push('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>');
+  lines.push('<gpx xmlns="http://www.topografix.com/GPX/1/1" creator="Wegpunkt-Optimierer" version="1.1">');
+  for(const p of points){
+    lines.push(`  <wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}">`);
+    if(p.ele !== null && !isNaN(p.ele)) lines.push(`    <ele>${p.ele.toFixed(1)}</ele>`);
+    if(includeNames) lines.push(`    <name>${esc(p.name)}</name>`);
+    lines.push('  </wpt>');
+  }
+  sections.forEach((sec, idx) => {
+    lines.push('  <trk>');
+    const label = sections.length > 1 ? `Teilstrecke ${sectionNo(idx, sections.length)} (echter Wegverlauf)` : 'Echter Wegverlauf (OSM-Wegenetz)';
+    lines.push(`    <name>${esc(label)}</name>`);
+    lines.push('    <trkseg>');
+    for(const c of sec){
+      lines.push(`      <trkpt lat="${c[0].toFixed(7)}" lon="${c[1].toFixed(7)}"></trkpt>`);
+    }
+    lines.push('    </trkseg>');
+    lines.push('  </trk>');
+  });
+  lines.push('</gpx>');
+  return lines.join('\n');
+}
+
+// Teilstrecken-Nummer mit Vornullen (01/20), damit die Sortierung in Basecamp stimmt.
+function sectionNo(idx, total){
+  const w = String(total).length;
+  return String(idx+1).padStart(w, '0') + '/' + total;
+}
+
+function esc(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildGPX(result, realPolyline, includeNames, parts){
+  if(includeNames === undefined) includeNames = true;
+  parts = parts || { route: true, track: true };
+  const lines = [];
+  lines.push('<?xml version="1.0" encoding="UTF-8" standalone="no" ?>');
+  lines.push('<gpx xmlns="http://www.topografix.com/GPX/1/1" creator="Wegpunkt-Optimierer" version="1.1">');
+  for(const p of points){
+    lines.push(`  <wpt lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}">`);
+    if(p.ele !== null && !isNaN(p.ele)) lines.push(`    <ele>${p.ele.toFixed(1)}</ele>`);
+    if(includeNames) lines.push(`    <name>${esc(p.name)}</name>`);
+    lines.push('  </wpt>');
+  }
+  if(parts.route){
+    lines.push('  <rte>');
+    lines.push(`    <name>Optimierte ${result.mode==='closed'?'Rundtour':'Route'} (Reihenfolge)</name>`);
+    const order = result.order.slice();
+    if(result.mode === 'closed') order.push(order[0]);
+    for(const idx of order){
+      const p = points[idx];
+      lines.push(`    <rtept lat="${p.lat.toFixed(7)}" lon="${p.lon.toFixed(7)}">`);
+      if(p.ele !== null && !isNaN(p.ele)) lines.push(`      <ele>${p.ele.toFixed(1)}</ele>`);
+      if(includeNames) lines.push(`      <name>${esc(p.name)}</name>`);
+      lines.push('    </rtept>');
+    }
+    lines.push('  </rte>');
+  }
+  if(parts.track && realPolyline && realPolyline.length > 1){
+    lines.push('  <trk>');
+    lines.push('    <name>Echter Wegverlauf (OSM-Wegenetz)</name>');
+    lines.push('    <trkseg>');
+    for(const c of realPolyline){
+      lines.push(`      <trkpt lat="${c[0].toFixed(7)}" lon="${c[1].toFixed(7)}"></trkpt>`);
+    }
+    lines.push('    </trkseg>');
+    lines.push('  </trk>');
+  }
+  lines.push('</gpx>');
+  return lines.join('\n');
+}
+</script>
+</body>
+</html>

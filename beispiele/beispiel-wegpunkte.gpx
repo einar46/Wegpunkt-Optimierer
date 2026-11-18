@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" creator="Wegpunkt-Optimierer Beispiel" version="1.1">
+  <metadata><name>Beispiel: 25 erfundene Wegpunkte</name><desc>Frei erfundene Testpunkte, keine echten Stempelstellen.</desc></metadata>
+  <wpt lat="50.878860" lon="10.630170"><ele>633</ele><name>WP001 Aussicht</name></wpt>
+  <wpt lat="50.845794" lon="10.764255"><ele>348</ele><name>WP002 Quelle</name></wpt>
+  <wpt lat="50.883883" lon="10.611600"><ele>559</ele><name>WP003 Hütte</name></wpt>
+  <wpt lat="50.865764" lon="10.617189"><ele>514</ele><name>WP004 Brücke</name></wpt>
+  <wpt lat="50.848383" lon="10.618143"><ele>517</ele><name>WP005 Kapelle</name></wpt>
+  <wpt lat="50.847093" lon="10.713091"><ele>785</ele><name>WP006 Felsen</name></wpt>
+  <wpt lat="50.866789" lon="10.725487"><ele>785</ele><name>WP007 Teich</name></wpt>
+  <wpt lat="50.847423" lon="10.717108"><ele>325</ele><name>WP008 Turm</name></wpt>
+  <wpt lat="50.957151" lon="10.609317"><ele>739</ele><name>WP009 Lichtung</name></wpt>
+  <wpt lat="50.855981" lon="10.683828"><ele>576</ele><name>WP010 Wegkreuz</name></wpt>
+  <wpt lat="50.854135" lon="10.661696"><ele>717</ele><name>WP011 Mühle</name></wpt>
+  <wpt lat="50.921840" lon="10.620611"><ele>592</ele><name>WP012 Sattel</name></wpt>
+  <wpt lat="50.916670" lon="10.674480"><ele>580</ele><name>WP013 Bank</name></wpt>
+  <wpt lat="50.925453" lon="10.712874"><ele>616</ele><name>WP014 Steinbruch</name></wpt>
+  <wpt lat="50.864715" lon="10.736080"><ele>518</ele><name>WP015 Gipfel</name></wpt>
+  <wpt lat="50.933267" lon="10.693120"><ele>772</ele><name>WP016 Bachtal</name></wpt>
+  <wpt lat="50.894382" lon="10.659953"><ele>706</ele><name>WP017 Eiche</name></wpt>
+  <wpt lat="50.861572" lon="10.755966"><ele>341</ele><name>WP018 Rastplatz</name></wpt>
+  <wpt lat="50.908931" lon="10.705039"><ele>748</ele><name>WP019 Hochsitz</name></wpt>
+  <wpt lat="50.881217" lon="10.689767"><ele>611</ele><name>WP020 Kreuz</name></wpt>
+  <wpt lat="50.957621" lon="10.623613"><ele>514</ele><name>WP021 Weiher</name></wpt>
+  <wpt lat="50.859795" lon="10.668411"><ele>777</ele><name>WP022 Klippe</name></wpt>
+  <wpt lat="50.898676" lon="10.607841"><ele>642</ele><name>WP023 Schutzhütte</name></wpt>
+  <wpt lat="50.849314" lon="10.711615"><ele>704</ele><name>WP024 Grenzstein</name></wpt>
+  <wpt lat="50.945057" lon="10.662750"><ele>655</ele><name>WP025 Wiese</name></wpt>
+</gpx>

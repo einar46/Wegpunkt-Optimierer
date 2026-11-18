@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+# Node (nur für die Tests)
+node_modules/
+package-lock.json
+# Eigene Daten und Ergebnisse nicht versehentlich veröffentlichen
+*_Track.gpx
+*_Route.gpx
+*_Route_Neuberechnung.gpx
+*_OSM_Wegenetz.gpx
+*_Entfernungen.csv
+*_distanzmatrix.json
+*.Backup

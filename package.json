@@ -1,0 +1,13 @@
+{
+  "name": "wegpunkt-optimierer",
+  "version": "1.0.0",
+  "description": "Tourenplanung über viele Wegpunkte auf dem OpenStreetMap-Wegenetz – reines Browser-Werkzeug",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node tests/test-laden.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
